@@ -6,7 +6,7 @@ A free calculator that estimates what one share of a company is worth, based on 
 
 ## Open it
 
-1. Download the file called **index.html** from this page.
+1. Download the calculator. Under **Releases** on this page, open the newest one and download the file ending in **.html**, for example **dcf-calculator-v1.0.0.html**. (The file called **index.html** in the list above is the same thing, always the newest version.)
 2. Double-click it. It opens in your web browser (Chrome, Safari, Edge or Firefox).
 
 There is nothing to install and no account to create. The calculator opens with a made-up example company so you can see how it works. Press **New** to start your own.
@@ -71,6 +71,14 @@ Use the **EN / 繁中** button at the top right to switch between English and Tr
 
 The version shared through claude.ai has an extra **Ask Claude** panel. It can fill in a company from just its ticker, suggest guesses, and answer questions about your valuation. That panel only works inside claude.ai, so it doesn't appear in this downloaded copy.
 
+## Version history
+
+The version you have is shown at the bottom of the calculator.
+
+- **1.0.0** (19 November 2026): the first public version.
+
+When a new version comes out, download it the same way. Your saved snapshots stay in your web browser, so they're still there when you open the new file in the same browser.
+
 ## Please note
 
 - A valuation is only as good as its guesses. Small changes to growth or the discount rate can move the result a lot, so check the Sensitivity table.
@@ -82,7 +90,7 @@ The version shared through claude.ai has an extra **Ask Claude** panel. It can f
 
 這是一個免費的股票估值計算機，依照公司未來十年預期帶來的現金，估算每一股的合理價。
 
-**開啟方式：** 下載 **index.html** 檔案，雙擊就會在瀏覽器（Chrome、Safari、Edge 或 Firefox）中開啟，不需要安裝或註冊。按右上角的 **EN / 繁中** 可以切換語言。
+**開啟方式：** 在本頁的 **Releases** 下載最新版本的 **.html** 檔案（例如 **dcf-calculator-v1.0.0.html**），雙擊就會在瀏覽器（Chrome、Safari、Edge 或 Firefox）中開啟，不需要安裝或註冊。按右上角的 **EN / 繁中** 可以切換語言。版本號碼顯示在頁面最下方，目前是 1.0.0。
 
 **使用步驟：**
 
