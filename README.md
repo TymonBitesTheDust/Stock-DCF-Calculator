@@ -6,7 +6,7 @@ A free calculator that estimates what one share of a company is worth, based on 
 
 ## Open it
 
-1. Download the calculator. Under **Releases** on this page, open the newest one and download the file ending in **.html**, for example **dcf-calculator-v1.0.0.html**. (The file called **index.html** in the list above is the same thing, always the newest version.)
+1. Download the calculator. Under **Releases** on this page, open the newest one and download the file ending in **.html**, for example **dcf-calculator-v1.1.0.html**. (The file called **index.html** in the list above is the same thing, always the newest version.)
 2. Double-click it. It opens in your web browser (Chrome, Safari, Edge or Firefox).
 
 There is nothing to install and no account to create. The calculator opens with a made-up example company so you can see how it works. Press **New** to start your own.
@@ -69,12 +69,35 @@ Use the **EN / 繁中** button at the top right to switch between English and Tr
 
 ## Ask Claude
 
-The version shared through claude.ai has an extra **Ask Claude** panel. It can fill in a company from just its ticker, suggest guesses, and answer questions about your valuation. That panel only works inside claude.ai, so it doesn't appear in this downloaded copy.
+Claude, Anthropic's AI assistant, can do the research for you:
+
+- **New model from a ticker:** type a ticker, such as NVDA or WTC.AX, and press **Build model**. Claude finds the company's latest figures, fills in every box and sets up the bear, base and bull outcomes. Everything it filled in is marked "Claude" until you change it, and **Undo** takes you back to what you had.
+- **Suggest assumptions** or **Update figures + assumptions** for the stock on screen. You see each suggested change and choose which ones to keep.
+- **Review my inputs:** a short list of what looks off and what to double-check.
+- **Ask a question** about your valuation, such as "Is a 10% discount rate right here?"
+
+### Connecting Claude
+
+In the downloaded calculator, Claude needs your own Anthropic API key. That's a private code that lets the calculator use Claude for you.
+
+1. Go to [console.anthropic.com](https://console.anthropic.com), sign in or create an account, and add some credit.
+2. Open **API keys**, create a key and copy it.
+3. In the calculator, paste it into **Connect Claude with your API key** and press **Connect**.
+
+Good to know:
+
+- What you use is charged to that Anthropic account. It's separate from any claude.ai subscription.
+- Claude can search the web, so it finds a company's latest results and share price. It's still worth checking the numbers against the company's own report.
+- Your key is kept only in the web browser on your computer, and is only sent to Anthropic. Don't connect it on a computer other people use. Press **Disconnect** to remove it.
+- If web search is switched off on your Anthropic account, Claude still works but uses what it already knows, which may be out of date. The calculator tells you when that happens.
+
+If you open the calculator inside claude.ai instead, it uses your claude.ai account, and you don't need a key.
 
 ## Version history
 
 The version you have is shown at the bottom of the calculator.
 
+- **1.1.0** (19 November 2026): Ask Claude now works in the downloaded calculator once you connect your own Anthropic API key, and Claude looks up the latest figures on the web.
 - **1.0.0** (19 November 2026): the first public version.
 
 When a new version comes out, download it the same way. Your saved snapshots stay in your web browser, so they're still there when you open the new file in the same browser.
@@ -90,7 +113,7 @@ When a new version comes out, download it the same way. Your saved snapshots sta
 
 這是一個免費的股票估值計算機，依照公司未來十年預期帶來的現金，估算每一股的合理價。
 
-**開啟方式：** 在本頁的 **Releases** 下載最新版本的 **.html** 檔案（例如 **dcf-calculator-v1.0.0.html**），雙擊就會在瀏覽器（Chrome、Safari、Edge 或 Firefox）中開啟，不需要安裝或註冊。按右上角的 **EN / 繁中** 可以切換語言。版本號碼顯示在頁面最下方，目前是 1.0.0。
+**開啟方式：** 在本頁的 **Releases** 下載最新版本的 **.html** 檔案（例如 **dcf-calculator-v1.1.0.html**），雙擊就會在瀏覽器（Chrome、Safari、Edge 或 Firefox）中開啟，不需要安裝或註冊。按右上角的 **EN / 繁中** 可以切換語言。版本號碼顯示在頁面最下方，目前是 1.1.0。
 
 **使用步驟：**
 
@@ -102,6 +125,12 @@ When a new version comes out, download it the same way. Your saved snapshots sta
 
 **儲存：** 紀錄會存在這台電腦的這個瀏覽器裡。換電腦、換瀏覽器或清除瀏覽紀錄後就會消失，建議定期按「匯出 CSV」備份。
 
-**Ask Claude：** 在 claude.ai 開啟的版本有「詢問 Claude」功能，只要輸入股票代號就能自動填入數字。下載的版本沒有這個功能。
+**詢問 Claude：** 輸入股票代號並按「建立模型」，Claude 會上網查詢最新數字、填好所有欄位，並設定三種情境。下載的版本需要你自己的 Anthropic API 金鑰：
+
+1. 到 [console.anthropic.com](https://console.anthropic.com) 登入或註冊，並加值。
+2. 在 **API keys** 建立金鑰並複製。
+3. 貼到計算機的「用你的 API 金鑰連接 Claude」，再按「連接」。
+
+使用費用記在你的 Anthropic 帳戶，和 claude.ai 方案分開計算。金鑰只會存在你這台電腦的瀏覽器裡，也只會傳送給 Anthropic；請不要在共用電腦上連接，按「中斷連接」即可移除。在 claude.ai 裡開啟的版本則使用你的 claude.ai 帳號，不需要金鑰。
 
 **注意：** 估值結果取決於你的假設，僅供學習和規劃參考，不構成投資建議。

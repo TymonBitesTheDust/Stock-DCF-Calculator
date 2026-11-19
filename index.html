@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="version" content="1.0.0">
+<meta name="version" content="1.1.0">
 <meta name="description" content="A free stock valuation calculator: estimate what a share is worth from the cash the company should bring in over the next ten years.">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>DCF現金流估值模型</title>
@@ -304,6 +304,12 @@ body { background: var(--paper); color: var(--ink); font-family: var(--f-body); 
 .ai-t td.new { color: var(--blue); font-weight: 600; }
 .ai-t input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--blue); }
 .ai-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.ai-connect { display: grid; gap: 6px; padding: 12px 14px; border-radius: 8px; background: var(--blue-soft); }
+.ai-connect label { font-weight: 600; font-size: 13px; display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; }
+.ai-connect .hint a { color: var(--blue); font-weight: 500; }
+.ai-connect .control { flex: 1 1 260px; max-width: 440px; background: var(--sheet); }
+.ai-connect .ai-build-row .control input { text-align: left; font-size: 15px; font-weight: 400; text-transform: none; }
+.ai-conn { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 12px; color: var(--muted); }
 .ai-build { display: grid; gap: 6px; padding: 12px 14px; border-radius: 8px; background: var(--blue-soft); }
 .ai-build label { font-weight: 600; font-size: 13px; display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; }
 .ai-build-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
@@ -437,11 +443,21 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
         <datalist id="ticker-list"></datalist>
       </section>
 
-      <section class="sheet ai" id="ai" aria-labelledby="ai-h" hidden>
+      <section class="sheet ai" id="ai" aria-labelledby="ai-h">
         <div class="ai-head">
           <h2 id="ai-h" data-tb="aiH">Ask Claude</h2>
-          <p class="hint" data-t="aiIntro"></p>
+          <p class="hint" id="ai-intro"></p>
         </div>
+        <form class="ai-connect" id="ai-connect" hidden>
+          <label for="ai-key" data-tb="aiKeyL">Connect Claude with your API key</label>
+          <p class="hint" data-th="aiKeyHelp"></p>
+          <div class="ai-build-row">
+            <div class="control"><input id="ai-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" aria-describedby="ai-key-err"></div>
+            <button type="submit" class="btn primary" id="ai-key-btn" data-t="aiKeyBtn">Connect</button>
+          </div>
+          <p class="msg err" id="ai-key-err" role="alert" hidden></p>
+        </form>
+        <p class="ai-conn" id="ai-conn" hidden><span id="ai-conn-t"></span><button type="button" class="link" id="ai-disconnect" data-t="aiDisconnect">Disconnect</button></p>
         <form class="ai-build" id="ai-build">
           <label for="ai-tk" data-tb="aiBuildL">New model from a ticker</label>
           <div class="ai-build-row">
@@ -775,6 +791,24 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     aiH: ['Ask Claude', '詢問 Claude'],
     aiIntro: ['Type a ticker to build a new model, or let Claude suggest assumptions, review your inputs, or answer questions about the stock on screen. Claude can’t browse the web, so check its figures against the latest report. Each request uses your own Claude usage.',
       '輸入股票代號即可建立新模型；也可以讓 Claude 為目前的股票建議假設、檢查輸入或回答問題。Claude 無法上網，請將它的數字對照最新財報。每次請求會使用你自己的 Claude 用量。'],
+    aiIntroKey: ['Type a ticker to build a new model, or let Claude suggest assumptions, review your inputs, or answer questions about the stock on screen. Claude looks up the latest figures on the web, but check them against the company’s report before you rely on them.',
+      '輸入股票代號即可建立新模型；也可以讓 Claude 為目前的股票建議假設、檢查輸入或回答問題。Claude 會上網查詢最新數字，但依賴之前仍請對照公司財報。'],
+    aiKeyL: ['Connect Claude with your API key', '用你的 API 金鑰連接 Claude'],
+    aiKeyHelp: ['This copy isn’t running inside claude.ai, so it talks to Claude with your own Anthropic API key, a private code from Anthropic. Create one at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>. What you use is charged to that Anthropic account, separately from any claude.ai plan. The key is kept only in this web browser on this computer and is only ever sent to Anthropic, so don’t connect it on a shared computer.',
+      '這個版本不是在 claude.ai 裡執行，所以要用你自己的 Anthropic API 金鑰（Anthropic 發給你的私人代碼）連接 Claude。可以在 <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a> 建立金鑰。使用費用記在該 Anthropic 帳戶，和 claude.ai 方案分開計算。金鑰只會存在這台電腦的這個瀏覽器裡，也只會傳送給 Anthropic，所以請不要在共用電腦上連接。'],
+    aiKeyBtn: ['Connect', '連接'],
+    aiKeyChecking: ['Checking…', '檢查中…'],
+    aiKeyEmpty: ['Paste your API key first.', '請先貼上 API 金鑰。'],
+    aiKeyBad: ['That API key didn’t work. Check that you copied all of it, or create a new one.', '這個 API 金鑰無法使用。請確認有完整複製，或建立新的金鑰。'],
+    aiKeyNet: ['Couldn’t reach Anthropic. Check your internet connection, then try again.', '無法連線到 Anthropic，請檢查網路連線後再試。'],
+    aiKeyOther: ['Couldn’t check the key right now. Try again in a minute.', '目前無法檢查金鑰，請稍後再試。'],
+    aiDisconnect: ['Disconnect', '中斷連接'],
+    aiDisconnected: ['Disconnected. Your API key was removed from this browser.', '已中斷連接，API 金鑰已從這個瀏覽器移除。'],
+    aiConnected: ['Connected. Claude is ready.', '已連接，Claude 可以使用了。'],
+    aiConnWeb: ['Connected with your API key. Claude can search the web for the latest figures.', '已用你的 API 金鑰連接，Claude 可以上網查詢最新數字。'],
+    aiConnNoWeb: ['Connected with your API key. Web search is switched off for this key, so figures come from Claude’s own knowledge.', '已用你的 API 金鑰連接。這個金鑰沒有開啟網路搜尋，所以數字來自 Claude 本身的知識。'],
+    aiErrNet: ['Couldn’t reach Claude. Check your internet connection, then try again.', '無法連線到 Claude，請檢查網路連線後再試。'],
+    aiAsOfWeb: [d => 'Figures as of ' + d + ', found by Claude on the web. Check them against the latest report before you save.', d => '數字截至 ' + d + '，由 Claude 上網查到。儲存前請對照最新財報。'],
     aiBuildL: ['New model from a ticker', '用股票代號建立新模型'],
     aiBuildBtn: ['Build model', '建立模型'],
     aiBuildHint: ['Claude works out the company, fills in the figures and all three cases, and opens it as a new model. Add .AX for the ASX, .TW for Taiwan, .HK for Hong Kong.', 'Claude 會找出公司、填入數字和三個情境，並開成一個新模型。澳股加 .AX、台股加 .TW、港股加 .HK。'],
@@ -914,7 +948,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
   const LS_DRAFT_OLD = 'dcf-draft-v1';
   const LS_LANG = 'dcf-lang-v1';
   const MINUS = '−';
-  const APP_VERSION = '1.0.0';
+  const APP_VERSION = '1.1.0';
 
   /* ================= helpers ================= */
   const byId = id => document.getElementById(id);
@@ -1692,7 +1726,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     const m = groupsMap();
     let gs = Array.from(m.entries()).sort((a, b) => (b[1][0].savedAtMs || 0) - (a[1][0].savedAtMs || 0));
     byId('stock-count').textContent = gs.length ? t('stockCount', gs.length) : '';
-    byId('btn-export').hidden = !store.entries.length || !(store.downloads || !window.claude);
+    byId('btn-export').hidden = !store.entries.length || !(store.downloads || ai.mode === 'key');
     byId('ticker-list').innerHTML = gs.map(g => '<option value="' + esc(g[0]) + '">' + esc(g[1][0].name || '') + '</option>').join('');
     const note = byId('rail-note');
     note.textContent = store.noteKey ? t(store.noteKey) : ''; note.hidden = !store.noteKey;
@@ -1866,7 +1900,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   }
   async function onExport() {
-    if (!store.entries.length) return;
+    if (!store.entries.length || !(store.downloads || ai.mode === 'key')) return;
     const cols = ['ticker', 'company', 'saved_at', 'method', 'fair_value', 'weighted', 'bear', 'base', 'bull', 'price', 'margin_of_safety_pct', 'signal', 'dividend_model',
       'currency', 'reported_currency', 'fx_rate', 'amount_unit', 'fcf', 'revenue', 'sbc', 'cash', 'debt', 'shares', 'shares_unit', 'discount_rate_pct', 'dividend_per_share',
       'base_fcf_growth_1_5', 'base_fcf_growth_6_10', 'base_rev_growth_1_5', 'base_rev_growth_6_10', 'base_target_margin', 'base_terminal_growth'];
@@ -1895,7 +1929,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
   /* ================= Claude assistant ================= */
   // Runs on the viewer's own Claude account through the `sample` capability. Claude can't browse,
   // so everything it proposes is shown as a reviewable list and applied only when the viewer chooses.
-  const ai = { fn: null, tools: false, state: 'pending', offKey: '', statusKey: '', statusArg: null, busy: false, ctl: null, proposal: null, built: null, chat: [], outMode: null, outText: '' };
+  const ai = { mode: window.claude && typeof window.claude.use === 'function' ? 'claude' : 'key', fn: null, tools: false, state: 'pending', offKey: '', statusKey: '', statusArg: null, busy: false, ctl: null, proposal: null, built: null, chat: [], outMode: null, outText: '' };
   const AI_CUR = CURRENCIES.map(c => c[0]);
   const AI_UNIT = { thousands: '1e3', millions: '1e6', billions: '1e9' };
   const AI_SUNIT = { single: '1', thousands: '1e3', millions: '1e6', billions: '1e9' };
@@ -1919,7 +1953,160 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     '- r: discount rate (required return). wacc: reference only. past5: revenue growth a year over the past 5 years. ath: highest FCF margin the company has reached.',
   ].join('\n');
 
+  /* ================= Claude with the viewer's own API key (outside claude.ai) ================= */
+  // Inside claude.ai the page uses the viewer's Claude account through `sample`. Anywhere else (the downloaded file)
+  // the viewer can connect their own Anthropic API key. It stays in this browser and is only sent to Anthropic.
+  const API_MODEL = 'claude-opus-5-5';
+  const SDK_URL = 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@1.5.0/+esm';
+  const LS_KEY = 'dcf-anthropic-key-v1';
+  const api = { key: '', client: null, Anthropic: null, web: true, checking: false, err: '' };
+  const aiWebOn = () => ai.mode === 'key' && api.web;
+  function aiWebLine(draft) {
+    if (aiWebOn()) return draft
+      ? 'You can search the web. Before answering, look up the company\'s latest reported results, guidance and current share price, preferring its own filings and releases, and give the period of your figures in "asOf".'
+      : 'You can search the web when it helps; prefer the company\'s own filings and releases.';
+    return draft ? 'You cannot browse the web: use what you already know and say how current it is.' : 'You cannot browse the web, so say when something may be out of date.';
+  }
+
+  async function apiClient() {
+    if (api.client) return api.client;
+    if (!api.Anthropic) {
+      try { const mod = await import(SDK_URL); api.Anthropic = mod.default || mod.Anthropic; }
+      catch (e) { throw { code: 'network' }; }
+    }
+    // The key is the viewer's own; it goes only to Anthropic, straight from their browser.
+    api.client = new api.Anthropic({ apiKey: api.key, dangerouslyAllowBrowser: true, maxRetries: 2 });
+    return api.client;
+  }
+  function apiErr(e) {
+    const A = api.Anthropic;
+    if (A) {
+      if (e instanceof A.APIUserAbortError) return { code: 'cancelled' };
+      if (e instanceof A.AuthenticationError || e instanceof A.PermissionDeniedError) return { code: 'bad_key' };
+      if (e instanceof A.RateLimitError) return { code: 'rate_limited' };
+      if (e instanceof A.BadRequestError) return { code: 'bad_request' };
+      if (e instanceof A.APIConnectionError) return { code: 'network' };
+      if (e instanceof A.APIError) return { code: 'upstream_error' };
+    }
+    if (e && typeof e.code === 'string') return e;
+    if (e && e.name === 'AbortError') return { code: 'cancelled' };
+    return { code: 'upstream_error' };
+  }
+  // Read a JSON answer tolerantly: the whole reply, else a fenced block, else the first { … last }.
+  function parseLooseJson(text) {
+    const s = String(text || '').trim(), tries = [s];
+    const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fence) tries.push(fence[1]);
+    const a = s.search(/[[{]/), b = Math.max(s.lastIndexOf('}'), s.lastIndexOf(']'));
+    if (a >= 0 && b > a) tries.push(s.slice(a, b + 1));
+    for (const x of tries) { try { return JSON.parse(x); } catch (e) { /* try the next form */ } }
+    return undefined;
+  }
+  // One Claude request with web search and the page's own tools, looping until Claude has finished.
+  async function apiRun(input, opts, wantJson) {
+    opts = opts || {};
+    const client = await apiClient();
+    const messages = typeof input === 'string' ? [{ role: 'user', content: input }] : input.map(m => ({ role: m.role, content: m.content }));
+    const pageTools = Array.isArray(opts.tools) ? opts.tools : [];
+    let withWeb = api.web, retriedNoWeb = false, rounds = 0, shown = '';
+    for (;;) {
+      if (++rounds > 12) throw { code: 'upstream_error' };
+      const tools = [];
+      if (withWeb) tools.push({ type: 'web_search_20260209', name: 'web_search', max_uses: wantJson ? 8 : 4 });
+      pageTools.forEach(x => tools.push({ name: x.name, description: x.description, input_schema: x.inputSchema || { type: 'object', properties: {} } }));
+      const params = {
+        model: API_MODEL, max_tokens: 16000, messages: messages,
+        output_config: { effort: wantJson ? 'high' : 'medium' },
+        // If Claude declines on safety grounds, the API continues on a suitable fallback model in the same call.
+        betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+      };
+      if (tools.length) params.tools = tools;
+      let msg;
+      try {
+        if (opts.onText && !pageTools.length) {
+          const stream = client.beta.messages.stream(params, { signal: opts.signal });
+          stream.on('text', delta => { shown += delta; opts.onText({ text: shown, delta: delta }); });
+          msg = await stream.finalMessage();
+        } else {
+          msg = await client.beta.messages.create(params, { signal: opts.signal });
+        }
+      } catch (e) {
+        const m = apiErr(e);
+        // Web search can be switched off for an Anthropic account: try once more without it.
+        if (m.code === 'bad_request' && withWeb && !retriedNoWeb && rounds === 1) { withWeb = false; retriedNoWeb = true; api.web = false; rounds = 0; continue; }
+        throw m;
+      }
+      if (msg.stop_reason === 'refusal') throw { code: 'refused' };
+      // A long web search can pause; sending the turn back lets the server carry on.
+      if (msg.stop_reason === 'pause_turn') { messages.push({ role: 'assistant', content: msg.content }); continue; }
+      const uses = msg.content.filter(bk => bk.type === 'tool_use');
+      if (msg.stop_reason === 'tool_use' && uses.length) {
+        messages.push({ role: 'assistant', content: msg.content });
+        const results = await Promise.all(uses.map(async u => {
+          const tool = pageTools.find(x => x.name === u.name);
+          try {
+            if (!tool) throw new Error('Unknown tool ' + u.name);
+            const out = await tool.execute(u.input || {}, { signal: opts.signal });
+            return { type: 'tool_result', tool_use_id: u.id, content: typeof out === 'string' ? out : JSON.stringify(out) };
+          } catch (err) {
+            return { type: 'tool_result', tool_use_id: u.id, is_error: true, content: 'Error: ' + (err && err.message ? err.message : String(err)) };
+          }
+        }));
+        messages.push({ role: 'user', content: results });
+        continue;
+      }
+      const text = msg.content.filter(bk => bk.type === 'text').map(bk => bk.text).join('');
+      const truncated = msg.stop_reason === 'max_tokens';
+      if (wantJson) {
+        const v = truncated ? undefined : parseLooseJson(text);
+        if (v === undefined) throw { code: 'invalid_json', text: text };
+        return v;
+      }
+      if (!text.trim() && !shown.trim()) throw { code: 'empty_completion' };
+      return { text: shown || text, truncated: truncated };
+    }
+  }
+  // Same shape as claude.ai's `sample`, so every Ask Claude feature works the same way in both places.
+  function makeApiSample() {
+    const f = (input, opts) => apiRun(input, opts, false);
+    f.json = (input, opts) => apiRun(input, opts, true);
+    f.limits = async () => ({ maxPromptBytes: 262144, tools: { maxCount: 8 } });
+    return f;
+  }
+  async function aiConnect(raw) {
+    const key = String(raw || '').trim();
+    if (!key) { api.err = 'aiKeyEmpty'; renderAI(); return; }
+    api.checking = true; api.err = ''; renderAI();
+    try {
+      api.key = key; api.client = null;
+      const client = await apiClient();
+      await client.models.retrieve(API_MODEL); // a free call that proves the key works
+      lsSet(LS_KEY, key);
+      api.web = true; ai.fn = makeApiSample(); ai.tools = true; ai.state = 'ready'; ai.statusKey = 'aiConnected';
+      byId('ai-key').value = '';
+    } catch (e) {
+      api.key = ''; api.client = null;
+      const m = apiErr(e);
+      api.err = m.code === 'bad_key' ? 'aiKeyBad' : m.code === 'network' ? 'aiKeyNet' : 'aiKeyOther';
+    } finally { api.checking = false; renderAI(); }
+  }
+  function aiForgetKey() {
+    try { localStorage.removeItem(LS_KEY); } catch (e) { /* ignore */ }
+    api.key = ''; api.client = null; ai.fn = null; ai.state = 'connect';
+  }
+  function aiDisconnect() {
+    if (ai.busy) return;
+    aiForgetKey(); ai.statusKey = ''; ai.proposal = null; api.err = '';
+    renderAI(); toast(t('aiDisconnected'));
+  }
+
   async function initAI() {
+    if (ai.mode === 'key') {
+      api.key = lsGet(LS_KEY) || '';
+      if (api.key) { ai.fn = makeApiSample(); ai.tools = true; ai.state = 'ready'; } else ai.state = 'connect';
+      renderAI();
+      return;
+    }
     let s = null;
     try { const c = window.claude; if (c && typeof c.use === 'function') s = await c.use('sample').catch(() => null); } catch (e) { s = null; }
     ai.fn = typeof s === 'function' ? s : null;
@@ -1930,13 +2117,22 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
   function setAIStatus(text) { byId('ai-status-t').textContent = text; }
   function renderAI() {
     const off = ai.state !== 'ready';
-    if (ai.state === 'off') byId('ai').setAttribute('data-off', ''); else byId('ai').removeAttribute('data-off');
-    byId('ai').hidden = !(ai.state === 'ready' || (ai.state === 'off' && ai.offKey));
+    if (ai.state === 'off' || ai.state === 'connect') byId('ai').setAttribute('data-off', ''); else byId('ai').removeAttribute('data-off');
     ['ai-tk', 'ai-build-btn', 'ai-draft-a', 'ai-draft-all', 'ai-review', 'ai-send', 'ai-q'].forEach(id => { byId(id).disabled = off || ai.busy; });
     byId('ai-stop').hidden = !ai.busy;
     byId('ai-clear').hidden = !ai.chat.length || ai.busy;
-    const key = ai.state === 'off' ? (ai.offKey || 'aiOff') : ai.state === 'pending' ? 'aiConnecting' : ai.statusKey;
+    const key = ai.state === 'off' ? (ai.offKey || 'aiOff') : ai.state === 'pending' ? 'aiConnecting' : ai.state === 'connect' ? '' : ai.statusKey;
     setAIStatus(key ? t(key, ai.statusArg) : '');
+    const keyMode = ai.mode === 'key';
+    byId('ai-intro').textContent = t(keyMode ? 'aiIntroKey' : 'aiIntro');
+    byId('ai-connect').hidden = !(keyMode && ai.state === 'connect');
+    byId('ai-conn').hidden = !(keyMode && ai.state === 'ready');
+    if (keyMode) {
+      byId('ai-conn-t').textContent = t(api.web ? 'aiConnWeb' : 'aiConnNoWeb');
+      const er = byId('ai-key-err'); er.textContent = api.err ? t(api.err) : ''; er.hidden = !api.err;
+      byId('ai-key-btn').disabled = api.checking; byId('ai-key-btn').textContent = t(api.checking ? 'aiKeyChecking' : 'aiKeyBtn');
+      byId('ai-disconnect').disabled = ai.busy;
+    }
     renderAIOut();
     renderProposal();
     renderStockNote();
@@ -1975,7 +2171,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     const c = e && e.code;
     if (c === 'cancelled') return '';
     if (AI_DENIED.indexOf(c) >= 0) return 'aiErrDenied';
-    return { rate_limited: 'aiErrRate', invalid_json: 'aiErrJson', refused: 'aiErrRefused', session_expired: 'aiErrSession' }[c] || 'aiErrOther';
+    return { rate_limited: 'aiErrRate', invalid_json: 'aiErrJson', refused: 'aiErrRefused', session_expired: 'aiErrSession', network: 'aiErrNet', bad_key: 'aiKeyBad' }[c] || 'aiErrOther';
   }
   async function aiRun(fn, key, arg) {
     if (!ai.fn || ai.busy) return;
@@ -1986,6 +2182,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
       ai.statusKey = aiErrKey(e);
       if (e && AI_DENIED.indexOf(e.code) >= 0) { ai.state = 'off'; ai.offKey = 'aiErrDenied'; }
       if (e && e.code === 'tools_unavailable') ai.tools = false;
+      if (e && e.code === 'bad_key' && ai.mode === 'key') { aiForgetKey(); api.err = 'aiKeyBad'; ai.statusKey = ''; }
     } finally { ai.busy = false; ai.ctl = null; ai.outText = ai.outMode === 'review' ? ai.outText : ''; renderAI(); }
   }
 
@@ -2051,7 +2248,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
         ? 'Suggest the company figures, the settings, the method, the discount rate and the assumptions for all three cases.'
         : 'Keep the user\'s company figures and settings exactly as they are (set "facts" and "settings" to null). Suggest the method, the discount rate and the assumptions for all three cases that fit this company and these figures.';
     return [
-      'You are helping an investor fill in a discounted cash flow (DCF) valuation for one stock in a web app. Today is ' + aiToday() + '. You cannot browse the web: use what you already know and say how current it is.',
+      'You are helping an investor fill in a discounted cash flow (DCF) valuation for one stock in a web app. Today is ' + aiToday() + '. ' + aiWebLine(true),
       '', AI_GUIDE, '',
       'STOCK: ' + tk + (ctx && ctx.company ? ' (' + ctx.company + ')' : ''),
       fresh ? 'CURRENT PAGE INPUTS: none yet (a new model).' : 'CURRENT PAGE INPUTS (null = blank): ' + JSON.stringify(ctx), '',
@@ -2148,7 +2345,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     const b = ai.built, ctx = { cur: cur(), rcur: rcur(), unit: unitInfo().short, shares: shareInfo().label[LI()] };
     box.hidden = false;
     let h = '<div class="ai-prop-h"><h3>' + esc(t('aiBuiltH', b.ticker)) + '</h3>' + (b.company ? '<span class="muted">' + esc(b.company) + '</span>' : '') + '</div>';
-    h += '<p class="hint">' + esc(t('aiAsOf', b.asOf || '?')) + ' ' + esc(t('aiBuiltNote')) + '</p>';
+    h += '<p class="hint">' + esc(t(aiWebOn() ? 'aiAsOfWeb' : 'aiAsOf', b.asOf || '?')) + ' ' + esc(t('aiBuiltNote')) + '</p>';
     if (b.warnings.length) h += '<ul class="ai-warn">' + b.warnings.map(w => '<li>' + esc(w) + '</li>').join('') + '</ul>';
     h += '<details class="ai-filled-list"><summary>' + esc(t('aiShowFilled', b.rows.length)) + '</summary><div class="table-wrap"><table class="ai-t"><tbody>';
     aiGroups(b.notes || {}).forEach(g => {
@@ -2238,7 +2435,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     if (!p) { box.hidden = true; box.textContent = ''; return; }
     box.hidden = false;
     let h = '<div class="ai-prop-h"><h3>' + esc(t('aiPropH')) + '</h3>' + (p.company ? '<span class="muted">' + esc(p.company) + '</span>' : '') + '</div>';
-    h += '<p class="hint">' + esc(p.mode === 'all' ? t('aiAsOf', p.asOf || '?') : t('aiAssumpOnly')) + '</p>';
+    h += '<p class="hint">' + esc(p.mode === 'all' ? t(aiWebOn() ? 'aiAsOfWeb' : 'aiAsOf', p.asOf || '?') : t('aiAssumpOnly')) + '</p>';
     if (p.warnings.length) h += '<ul class="ai-warn">' + p.warnings.map(w => '<li>' + esc(w) + '</li>').join('') + '</ul>';
     if (!p.rows.length) h += '<p>' + esc(t('aiNoChanges')) + '</p>';
     else {
@@ -2273,7 +2470,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     toast(t('aiApplied', n));
   }
   async function aiReview() {
-    const prompt = ['You are reviewing a discounted cash flow (DCF) valuation an investor built in a web app. Today is ' + aiToday() + '. You cannot browse the web.', '', AI_GUIDE, '',
+    const prompt = ['You are reviewing a discounted cash flow (DCF) valuation an investor built in a web app. Today is ' + aiToday() + '. ' + aiWebLine(false), '', AI_GUIDE, '',
       'THE VALUATION (null = blank): ' + JSON.stringify(aiContext()), '',
       'Review it in 5 to 8 short bullet points, each starting with "• ": which inputs look off for this company and why, which assumption the result is most sensitive to, and what to double-check in the latest report. Mention specific numbers. If figures differ from what you know, say so, and note that your own knowledge may be older than the user\'s figures. Plain text only, no headings or tables. ' + aiLangLine()].join('\n');
     ai.outMode = 'review'; ai.outText = '';
@@ -2290,7 +2487,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     ai.outMode = 'chat'; ai.outText = '';
     ai.chat.push({ role: 'user', content: q.slice(0, 2000) });
     byId('ai-q').value = '';
-    const rules = ['You are a concise valuation assistant inside a DCF web app. Answer the investor\'s questions about the valuation below. Today is ' + aiToday() + '. You cannot browse the web, so say when something may be out of date. Plain text with short paragraphs or "• " bullets, no tables or headings. ' + aiLangLine(),
+    const rules = ['You are a concise valuation assistant inside a DCF web app. Answer the investor\'s questions about the valuation below. Today is ' + aiToday() + '. ' + aiWebLine(false) + ' Plain text with short paragraphs or "• " bullets, no tables or headings. ' + aiLangLine(),
       '', AI_GUIDE, '', 'CURRENT VALUATION (null = blank): ' + JSON.stringify(aiContext())].join('\n');
     const turns = [{ role: 'user', content: rules }].concat(ai.chat.slice(-8));
     await aiRun(async signal => {
@@ -2303,6 +2500,8 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     byId('ai-draft-a').addEventListener('click', () => aiDraft('assume'));
     byId('ai-draft-all').addEventListener('click', () => aiDraft('all'));
     byId('ai-build').addEventListener('submit', e => { e.preventDefault(); aiBuild(byId('ai-tk').value); });
+    byId('ai-connect').addEventListener('submit', e => { e.preventDefault(); aiConnect(byId('ai-key').value); });
+    byId('ai-disconnect').addEventListener('click', aiDisconnect);
     byId('sb-note').addEventListener('click', e => { if (e.target.closest('[data-ai-fill]')) aiBuild(state.values.ticker); });
     byId('ai-review').addEventListener('click', aiReview);
     byId('ai-ask').addEventListener('submit', e => { e.preventDefault(); aiAsk(byId('ai-q').value); });
