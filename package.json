@@ -1,0 +1,13 @@
+{
+  "name": "stock-dcf-calculator",
+  "private": true,
+  "description": "DCF stock valuation calculator and its Claude connector",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node build.mjs && sh test/run-all.sh"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.2"
+  }
+}

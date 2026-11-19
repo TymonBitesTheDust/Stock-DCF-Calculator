@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="version" content="1.1.0">
+<meta name="version" content="1.2.0">
 <meta name="description" content="A free stock valuation calculator: estimate what a share is worth from the cash the company should bring in over the next ten years.">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>DCF現金流估值模型</title>
@@ -388,6 +388,42 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
   .legend { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+
+/* Sync & Claude window */
+.modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: start center; padding: 40px 16px; overflow-y: auto; background: rgb(13 20 16 / .45); }
+body.modal-open { overflow: hidden; }
+.modal-card { width: 100%; max-width: 640px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 14px; box-shadow: var(--shadow); padding: 20px 22px 22px; display: grid; gap: 16px; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.modal-head h2 { margin: 0; font-family: var(--f-display); font-size: 22px; line-height: 1.2; }
+.sy-sec { display: grid; gap: 8px; padding-top: 14px; border-top: 1px solid var(--rule); }
+.sy-sec h3 { margin: 0; font-size: 15px; }
+.sy-sec .hint { margin: 0; font-size: 13px; }
+.sy-form, .sy-on { display: grid; gap: 8px; }
+.sy-sec label { font-weight: 600; font-size: 13px; }
+.sy-sec textarea, .sy-sec input { width: 100%; box-sizing: border-box; font: 14px/1.4 var(--f-body); padding: 8px 10px; border: 1px solid var(--rule-strong); border-radius: 8px; background: var(--paper); color: var(--ink); }
+.sy-sec textarea { font-family: var(--f-num); font-size: 12.5px; resize: vertical; }
+.sy-sec textarea:focus, .sy-sec input:focus { outline: 2px solid var(--blue); outline-offset: 1px; }
+.sy-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+.sy-two > div { display: grid; gap: 4px; }
+.sy-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sy-row input { flex: 1 1 240px; width: auto; min-width: 0; }
+.sy-sec .sy-code { font-family: var(--f-num); font-size: 12px; }
+.sy-how summary { cursor: pointer; font-size: 13px; color: var(--blue); font-weight: 500; }
+.sy-how ol, .cl-steps { margin: 6px 0 0; padding-left: 22px; display: grid; gap: 12px; font-size: 13px; list-style: decimal; }
+.sy-how li::marker, .cl-steps li::marker { font-weight: 700; color: var(--blue); }
+.cl-steps p { margin: 0 0 6px; }
+.sy-how pre { font-family: var(--f-num); font-size: 11.5px; background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 8px; overflow-x: auto; margin: 6px 0 0; }
+.sy-sec a:not(.btn) { color: var(--blue); }
+.sy-need { font-size: 13px; padding: 8px 10px; background: var(--warn-soft); color: var(--warn); border-radius: 8px; margin: 0; }
+.msg.ok { color: var(--buy); }
+.cl-status { font-size: 13px; margin: 0; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+a.btn { text-decoration: none; }
+a.btn.is-off { opacity: .5; cursor: not-allowed; }
+.ai-alt { margin: 0; }
+.e-by { font-size: 11px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.e-by .tag-claude { font-weight: 600; color: var(--blue); background: var(--blue-soft); border-radius: 4px; padding: 0 5px; }
+.e-note { margin: 0; font-size: 11.5px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+@media (max-width: 560px) { .sy-two { grid-template-columns: 1fr; } .modal { padding: 12px 8px; } .modal-card { padding: 16px; } }
 </style>
 </head>
 <body>
@@ -401,6 +437,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     <div class="top-r">
       <p class="legend"><b class="lg-in">1,250</b> <span data-t="youType">you type</span> <b class="lg-calc">1,250</b> <span data-t="calculated">calculated</span></p>
       <p class="status" id="store-status" data-state="pending"><span class="dot" aria-hidden="true"></span><span id="store-text">Loading your history…</span></p>
+      <button type="button" class="btn sm" id="btn-sync" data-t="btnSync" hidden>Sync &amp; Claude</button>
       <div class="lang" role="group" aria-label="Language · 語言">
         <button type="button" data-lang="en" aria-pressed="true">EN</button>
         <button type="button" data-lang="zh" aria-pressed="false" lang="zh-Hant">繁中</button>
@@ -448,6 +485,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
           <h2 id="ai-h" data-tb="aiH">Ask Claude</h2>
           <p class="hint" id="ai-intro"></p>
         </div>
+        <p class="hint ai-alt" id="ai-alt" hidden><span id="ai-alt-t"></span> <button type="button" class="link" id="ai-alt-btn" data-open-sync></button></p>
         <form class="ai-connect" id="ai-connect" hidden>
           <label for="ai-key" data-tb="aiKeyL">Connect Claude with your API key</label>
           <p class="hint" data-th="aiKeyHelp"></p>
@@ -569,9 +607,339 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
   <span class="pill none" id="mb-signal">—</span>
   <button type="button" class="btn primary" id="mb-save" data-t="btnSaveShort">Save</button>
 </div>
+<div class="modal" id="sy-modal" hidden>
+  <div class="modal-card" id="sy-card" role="dialog" aria-modal="true" aria-labelledby="sy-title">
+    <div class="modal-head">
+      <h2 id="sy-title" data-t="syTitle">Sync &amp; Claude</h2>
+      <button type="button" class="btn sm ghost" id="sy-close" data-tal="syClose">✕</button>
+    </div>
+    <section class="sy-sec" aria-labelledby="sy-h">
+      <h3 id="sy-h" data-t="sySyncH"></h3>
+      <p class="hint" data-t="syIntro"></p>
+      <form id="sy-form" class="sy-form">
+        <label for="sy-cfg" data-t="syCfgL"></label>
+        <p class="hint" data-t="syCfgHelp"></p>
+        <textarea id="sy-cfg" rows="3" spellcheck="false" autocomplete="off" placeholder="const firebaseConfig = { apiKey: … }   ·   TW1-…"></textarea>
+        <div class="sy-two">
+          <div><label for="sy-email" data-t="syEmail"></label><input id="sy-email" type="email" autocomplete="username"></div>
+          <div><label for="sy-pw" data-t="syPw"></label><input id="sy-pw" type="password" autocomplete="current-password"></div>
+        </div>
+        <p class="msg err" id="sy-err" role="alert" hidden></p>
+        <div class="sy-row"><button type="submit" class="btn primary" id="sy-signin" data-t="sySignIn"></button><button type="submit" class="btn" id="sy-signup" data-t="sySignUp"></button></div>
+        <details class="sy-how"><summary data-t="syHowH"></summary><ol data-th="syHow"></ol></details>
+      </form>
+      <div id="sy-on" class="sy-on" hidden>
+        <p class="hint"><span id="sy-who"></span> <span id="sy-state" class="msg"></span></p>
+        <div class="sy-row"><button type="button" class="btn sm" id="sy-now" data-t="syNow"></button><button type="button" class="btn sm ghost" id="sy-out" data-t="syOut"></button></div>
+        <label for="sy-code" data-t="syCodeL"></label>
+        <p class="hint" data-t="syCodeHelp"></p>
+        <div class="sy-row"><input id="sy-code" class="sy-code" readonly><button type="button" class="btn sm" id="sy-code-copy" data-t="syCopyBtn"></button></div>
+      </div>
+    </section>
+    <section class="sy-sec" aria-labelledby="cl-h">
+      <h3 id="cl-h" data-t="clH"></h3>
+      <p class="hint" data-t="clIntro"></p>
+      <p class="sy-need" id="cl-need" data-t="clNeed"></p>
+      <ol class="cl-steps" id="cl-steps" hidden>
+        <li><p data-th="clStep1"></p><div class="sy-row"><button type="button" class="btn primary sm" id="cl-copy" data-t="clCopy"></button><button type="button" class="btn sm" id="cl-save" data-t="clSave"></button></div></li>
+        <li><p data-th="clStep2"></p></li>
+        <li><p data-th="clStep3"></p>
+          <form class="sy-row" id="cl-check-form"><input id="cl-url" type="text" inputmode="url" spellcheck="false" autocomplete="off" placeholder="https://dcf.yourname.workers.dev" data-tal="clUrlAria"><button type="submit" class="btn sm" id="cl-check" data-t="clCheck"></button></form>
+          <p class="msg" id="cl-check-msg" role="status" hidden></p></li>
+        <li><p data-th="clStep4"></p><div class="sy-row"><a class="btn primary sm" id="cl-add" target="_blank" rel="noopener" data-t="clAdd"></a><span class="hint" id="cl-add-hint" data-t="clAddHint"></span></div></li>
+        <li><p data-th="clStep5"></p></li>
+      </ol>
+      <p class="cl-status" id="cl-status" hidden><span id="cl-status-t"></span> <button type="button" class="link" id="cl-disconnect" data-t="clDisconnect"></button></p>
+    </section>
+  </div>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script>
+/* DCF core: the calculator's fields, number parsing and valuation maths, with no page code.
+ * The app (src/app.html) and the Claude connector (connector/) both run this same file, so a
+ * valuation Claude saves gives exactly the numbers the app shows when it is loaded.
+ *
+ * A model is `st` = { values, sc, active }: values holds the stock-wide inputs as the text the
+ * user typed ('1,250', '12', '1.2B'), sc holds the bear/base/bull inputs the same way.
+ * build.mjs pastes this file into the app's script and bundles it into the connector. */
+const DCF = (function () {
+  'use strict';
+
+  /* ================= configuration ================= */
+  const UNITS = {
+    '1e3': { mult: 1e3, short: 'K', word: ['thousands', '千'], label: ['Thousands (K)', '千 (K)'] },
+    '1e6': { mult: 1e6, short: 'M', word: ['millions', '百萬'], label: ['Millions (M)', '百萬 (M)'] },
+    '1e9': { mult: 1e9, short: 'B', word: ['billions', '十億'], label: ['Billions (B)', '十億 (B)'] },
+  };
+  const SHARE_UNITS = {
+    '1':   { mult: 1,   label: ['shares', '股'], word: ['single shares', '股'] },
+    '1e3': { mult: 1e3, label: ['K', '千股'], word: ['thousands of shares', '千股'] },
+    '1e6': { mult: 1e6, label: ['M', '百萬股'], word: ['millions of shares', '百萬股'] },
+    '1e9': { mult: 1e9, label: ['B', '十億股'], word: ['billions of shares', '十億股'] },
+  };
+  const CURRENCIES = [['$', ['$ · US dollar', '$ · 美元']], ['A$', ['A$ · Australian dollar', 'A$ · 澳幣']], ['NT$', ['NT$ · NT dollar', 'NT$ · 新台幣']], ['HK$', ['HK$ · HK dollar', 'HK$ · 港幣']],
+    ['¥', ['¥ · Yen / Yuan', '¥ · 日圓／人民幣']], ['€', ['€ · Euro', '€ · 歐元']], ['£', ['£ · Pound', '£ · 英鎊']]];
+
+  // sc: true = kept separately for each case. en/zh labels (zh follows the sheet), s = short names for messages, h = hints.
+  const F = {
+    fcf:     { kind: 'money', en: 'TTM free cash flow', zh: '自由現金流（基期）', s: ['TTM free cash flow', '自由現金流'], h: ['Last 12 months. Negative: -120 or (120).', '近 12 個月。負數可輸入 -120 或 (120)。'] },
+    revenue: { kind: 'money', en: 'TTM revenue', zh: 'TTM 營收', s: ['TTM revenue', 'TTM 營收'], h: ['Needed for the Revenue × FCF margin method and the margin check.', '「營收 × FCF 利潤率」方法和利潤率檢查需要。'] },
+    sbc:     { kind: 'money', en: 'Stock-based compensation', zh: '股票薪酬 (SBC)', s: ['stock-based pay', '股票薪酬'], h: ['Optional. Subtracted from FCF, because paying staff in stock dilutes shareholders.', '選填。會從 FCF 扣除，因為用股票發薪會稀釋股東權益。'] },
+    g1:      { kind: 'pct', sc: true, en: 'FCF growth, years 1–5', zh: '未來成長率（一~五年）', s: ['FCF growth for years 1–5', '一~五年成長率'], h: ['Yearly growth of free cash flow.', '自由現金流每年的成長率。'] },
+    rg1:     { kind: 'pct', sc: true, en: 'Revenue growth, years 1–5', zh: '營收成長（y1-5）', s: ['revenue growth for years 1–5', '一~五年營收成長'], h: ['Optional. For the margin check.', '選填。用於利潤率檢查。'], hM: ['Drives revenue in this method.', '此方法用它推估營收。'] },
+    g2:      { kind: 'pct', sc: true, en: 'FCF growth, years 6–10', zh: '二階成長率（六~十年）', s: ['FCF growth for years 6–10', '六~十年成長率'], h: ['Usually lower than years 1–5.', '通常低於一~五年。'], copyFrom: 'g1' },
+    rg2:     { kind: 'pct', sc: true, en: 'Revenue growth, years 6–10', zh: '營收成長（y6-10）', s: ['revenue growth for years 6–10', '六~十年營收成長'], h: ['Optional.', '選填。'], hM: ['Usually lower than years 1–5.', '通常低於一~五年。'], copyFrom: 'rg1' },
+    tm:      { kind: 'pct', sc: true, en: 'Target FCF margin', zh: '目標 FCF 利潤率', s: ['target FCF margin', '目標 FCF 利潤率'], h: ['FCF as a % of revenue once the business settles.', '營運穩定後 FCF 佔營收的比例。'] },
+    tmYear:  { kind: 'int', sc: true, en: 'Year the target is reached', zh: '達到目標的年份', s: ['target year', '目標年份'], h: ['1–10. The margin moves in a straight line until then. Blank = 5.', '1–10。在此之前利潤率直線變化，空白視為 5。'], ph: '5' },
+    tg:      { kind: 'pct', sc: true, en: 'Terminal growth', zh: '永久成長率', s: ['terminal growth', '永久成長率'], h: ['Growth after year 10, forever. Usually 2–3%.', '第十年之後的永續成長率，通常 2–3%。'] },
+    w:       { kind: 'pct', sc: true, en: 'Weight of this case', zh: '此情境權重', s: ['weight', '權重'], h: ['How likely you think this case is. Used for the weighted value.', '你認為此情境發生的機率，用於加權合理價。'] },
+    r:       { kind: 'pct', en: 'Discount rate', zh: '期望折現率（期望收益率）', s: ['discount rate', '折現率'], h: ['Your required return. Discounts every year, as in the sheet.', '你要求的報酬率。和試算表一樣，每一年都用它折現。'] },
+    wacc:    { kind: 'pct', en: 'WACC', zh: '折現率 (WACC)', s: ['WACC', 'WACC'], h: ['Reference only.', '僅供參考。'], useWacc: true },
+    cash:    { kind: 'money', en: 'Cash & investments', zh: '(+) 現金及其他投資', s: ['cash & investments', '現金及其他投資'], h: ['Blank counts as 0.', '空白視為 0。'] },
+    debt:    { kind: 'money', en: 'Total debt', zh: '(−) 總負債', s: ['total debt', '總負債'], h: ['Interest-bearing debt, not all liabilities. Blank counts as 0.', '只填有息負債，不是全部負債。空白視為 0。'] },
+    shares:  { kind: 'shares', en: 'Shares outstanding', zh: '流通股數', s: ['shares outstanding', '流通股數'], h: ['Pick the unit your source uses.', '選擇和資料來源相同的單位。'] },
+    price:   { kind: 'price', en: 'Current share price', zh: '股票當前價格', s: ['current share price', '股票當前價格'], h: ['Needed for margin of safety.', '計算安全邊際需要。'] },
+    dps:     { kind: 'price', en: 'Dividend per share, yearly', zh: '每股股利（年）', s: ['dividend per share', '每股股利'], h: ['Optional. Last 12 months, or the quarterly dividend × 4.', '選填。近 12 個月，或季配息 × 4。'] },
+    dg:      { kind: 'pct', en: 'Dividend growth, years 1–10', zh: '股利成長率（1–10 年）', s: ['dividend growth', '股利成長率'], h: ['Optional. Blank = terminal growth.', '選填。空白視為永久成長率。'] },
+    past5:   { kind: 'pct', en: 'Past 5-year growth', zh: '過去五年成長率', s: ['past 5-year growth', '過去五年成長率'], h: ['Compared with your growth inputs.', '用來對照你的成長假設。'] },
+    ath:     { kind: 'pct', en: 'Peak FCF margin (all-time high)', zh: '歷史最高 FCF 利潤率', s: ['peak FCF margin', '歷史最高 FCF 利潤率'], h: ['Flags projected margins above it.', '預測利潤率超過時會提醒。'] },
+    buyAt:   { kind: 'pct', en: 'Buy when margin of safety ≥', zh: '安全邊際 ≥ 此值時買進', s: ['buy level', '買進門檻'], h: ['Default 25%.', '預設 25%。'], ph: '25' },
+    sellAt:  { kind: 'pct', en: 'Sell when margin of safety ≤', zh: '安全邊際 ≤ 此值時賣出', s: ['sell level', '賣出門檻'], h: ['Default −10%. Set both to 0 to match the sheet.', '預設 −10%。兩者都設 0 就和試算表一樣。'], ph: '-10' },
+    fx:      { kind: 'rate', en: 'Exchange rate', zh: '匯率', s: ['exchange rate', '匯率'], h: ['', ''] },
+  };
+  const FKEYS = Object.keys(F);
+  const SC_KEYS = FKEYS.filter(k => F[k].sc);
+  const FACT_KEYS = FKEYS.filter(k => !F[k].sc);
+  const SCN = ['bear', 'base', 'bull'];
+  const DEF_W = { bear: 25, base: 50, bull: 25 };
+  const REQ = { fcf: ['fcf', 'g1', 'g2', 'r', 'tg', 'shares'], margin: ['fcf', 'revenue', 'rg1', 'rg2', 'tm', 'r', 'tg', 'shares'] };
+  const DEFAULTS = { ticker: '', name: '', currency: '$', rcurrency: '', unit: '1e6', sharesUnit: '1e6', baseYear: String(new Date().getFullYear()), method: 'fcf', buyAt: '25', sellAt: '-10' };
+
+  const isNum = v => typeof v === 'number' && Number.isFinite(v);
+  const pick = (a, b) => (a != null ? a : b);
+  const normTicker = s => String(s || '').trim().toUpperCase().slice(0, 24);
+  function emptySc() { return { bear: { w: '25' }, base: { w: '50' }, bull: { w: '25' } }; }
+
+  /* ================= number parsing ================= */
+  // Accepts 1,234.5 · $1.2B · (120) · 12% · 25億 · full-width digits from CJK keyboards.
+  const SUF = { k: 1e3, m: 1e6, b: 1e9, t: 1e12, '萬': 1e4, '万': 1e4, '億': 1e8, '亿': 1e8 };
+  function toAscii(s) { return s.replace(/[０-９．－％（），＋]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)); }
+  function parseRaw(raw, kind) {
+    let s = toAscii(String(raw == null ? '' : raw)).trim();
+    if (!s) return { empty: true };
+    s = s.replace(/−/g, '-').replace(/[\s,_]/g, '').replace(/^([-+]?)(?:US|NT|HK|RMB|CN|AU|A)?[$¥€£]/i, '$1');
+    let neg = false;
+    const paren = s.match(/^\((.*)\)$/);
+    if (paren) { neg = true; s = paren[1]; }
+    let pct = false;
+    if (s.endsWith('%')) { pct = true; s = s.slice(0, -1); }
+    const m = s.match(/^([-+]?)(\d+(?:\.\d*)?|\.\d+)([kmbt萬万億亿]?)$/i);
+    if (!m) return { empty: false, bad: true };
+    let v = parseFloat(m[2]);
+    if (m[1] === '-') v = -v;
+    if (neg) v = -v;
+    const suf = m[3] ? SUF[m[3].toLowerCase()] : null;
+    if (suf && (kind === 'pct' || kind === 'int' || kind === 'rate')) return { empty: false, bad: true };
+    if (kind === 'rate' && !(v > 0)) return { empty: false, bad: true };
+    if (pct && kind !== 'pct') return { empty: false, bad: true };
+    if (kind === 'int' && (v !== Math.round(v) || v < 1 || v > 10)) return { empty: false, bad: true };
+    return { empty: false, bad: false, v: v, suf: suf, text: m[2] };
+  }
+  // How a number is written back into a box (the same text the app shows after loading a save).
+  function fmtInput(v, kind) {
+    if (kind === 'pct') return String(+v.toFixed(4));
+    if (kind === 'int') return String(Math.round(v));
+    if (kind === 'rate') return String(+v.toFixed(6));
+    if (kind === 'price') return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    return v.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  }
+
+  /* ================= reading a model ================= */
+  const unitOf = st => UNITS[st.values.unit] || UNITS['1e6'];
+  const sharesOf = st => SHARE_UNITS[st.values.sharesUnit] || SHARE_UNITS['1e6'];
+  const curOf = st => st.values.currency || '$';
+  // Financial statements can use another currency than the share price (e.g. WiseTech reports in US$, trades in A$).
+  const rcurOf = st => st.values.rcurrency || curOf(st);
+  const needFxOf = st => !!st.values.rcurrency && st.values.rcurrency !== curOf(st);
+  const methodOf = st => (st.values.method === 'margin' ? 'margin' : 'fcf');
+  const scFilledOf = (st, s) => SC_KEYS.some(k => k !== 'w' && String((st.sc[s] || {})[k] || '').trim() !== '');
+  function baseYearOf(st) {
+    const y = parseInt(toAscii(String(st.values.baseYear || '')), 10);
+    return y > 1900 && y < 3000 ? y : new Date().getFullYear();
+  }
+  function baseMult(st, kind) { return kind === 'money' ? unitOf(st).mult : kind === 'shares' ? sharesOf(st).mult : 1; }
+  const rawOf = (st, k, s) => (F[k].sc ? (st.sc[s || st.active || 'base'] || {})[k] : st.values[k]);
+  function num(st, k, s) {
+    const p = parseRaw(rawOf(st, k, s), F[k].kind);
+    if (p.empty) return null;
+    if (p.bad) return NaN;
+    return p.suf ? p.v * p.suf / baseMult(st, F[k].kind) : p.v;
+  }
+
+  /* ================= the model ================= */
+  // Sheet formulas, extended: FCF_t grows at C3 (yrs 1–5) / C8 (yrs 6–10), or revenue × a margin path in the margin method.
+  // TV = FCF10 × (1 + g∞) / (r − g∞) · EV = NPV(r, years 1–10 incl. TV) · equity = EV + cash − debt · fair = equity / shares.
+  // n = one case's numbers plus what compute needs from the settings (units, exchange rate, base year).
+  function readModel(st, s) {
+    const n = { method: methodOf(st), s: s, unitMult: unitOf(st).mult, shareMult: sharesOf(st).mult, needFx: needFxOf(st), baseYear: baseYearOf(st) };
+    FKEYS.forEach(k => { n[k] = num(st, k, s); });
+    return n;
+  }
+  function blockers(n) {
+    const req = REQ[n.method];
+    const keys = FACT_KEYS.concat(SC_KEYS);
+    const bad = keys.filter(k => Number.isNaN(n[k]));
+    const missing = req.filter(k => n[k] == null);
+    if (n.needFx && n.fx == null) missing.push('fx');
+    const rate = isNum(n.r) && isNum(n.tg) && n.r <= n.tg;
+    const shares = isNum(n.shares) && n.shares <= 0;
+    const rev0 = n.method === 'margin' && isNum(n.revenue) && n.revenue <= 0;
+    const blocking = bad.filter(k => req.indexOf(k) >= 0 || (k === 'tmYear' && n.method === 'margin') || k === 'sbc' || (k === 'fx' && n.needFx));
+    return { bad: bad, missing: missing, rate: rate, shares: shares, rev0: rev0, ok: !blocking.length && !missing.length && !rate && !shares && !rev0 };
+  }
+  function rule(n) {
+    const buy = isNum(n.buyAt) ? n.buyAt / 100 : 0.25, sell = isNum(n.sellAt) ? n.sellAt / 100 : -0.10;
+    return buy < sell ? { buy: 0, sell: 0, bad: true } : { buy: buy, sell: sell, bad: false };
+  }
+  function signalFor(mos, n) {
+    if (mos == null) return null;
+    const q = rule(n);
+    if (mos >= q.buy && mos > q.sell) return 'BUY';
+    if (mos <= q.sell) return 'SELL';
+    return 'HOLD';
+  }
+  // o: overrides for what-ifs (r, tg, g1, tm) and for values from outside the settings (unitMult, shareMult, fx).
+  function compute(n, o) {
+    o = o || {};
+    const r = pick(o.r, n.r) / 100, tg = pick(o.tg, n.tg) / 100;
+    if (!(r > tg)) return null;
+    const margin = n.method === 'margin';
+    const sbc = isNum(n.sbc) ? n.sbc : 0;
+    const f0 = n.fcf - sbc;
+    const rev0 = isNum(n.revenue) && n.revenue > 0 ? n.revenue : null;
+    if (margin && rev0 == null) return null;
+    const m0 = rev0 ? f0 / rev0 : null;
+    const g1 = pick(o.g1, n.g1) / 100, g2 = n.g2 / 100;
+    const rg1 = isNum(n.rg1) ? n.rg1 / 100 : null, rg2 = isNum(n.rg2) ? n.rg2 / 100 : null;
+    const tm = pick(o.tm, n.tm) / 100, N = isNum(n.tmYear) ? n.tmYear : 5;
+    const by = isNum(n.baseYear) ? n.baseYear : new Date().getFullYear();
+    let f = f0, rev = rev0, sumPV = 0;
+    const years = [];
+    for (let i = 1; i <= 10; i++) {
+      const rg = i <= 5 ? rg1 : rg2, prev = f;
+      rev = rev != null && rg != null ? rev * (1 + rg) : null;
+      if (margin) f = rev * (i < N ? m0 + (tm - m0) * i / N : tm);
+      else f = f * (1 + (i <= 5 ? g1 : g2));
+      const g = margin ? (prev > 0 ? f / prev - 1 : null) : (i <= 5 ? g1 : g2);
+      const df = Math.pow(1 + r, -i), pv = f * df;
+      sumPV += pv;
+      years.push({ t: i, year: by + i, g: g, rev: rev, fcf: f, margin: rev ? f / rev : null, df: df, pv: pv });
+    }
+    const last = years[9];
+    const tv = last.fcf * (1 + tg) / (r - tg), pvTV = tv * last.df;
+    const cash = isNum(n.cash) ? n.cash : 0, debt = isNum(n.debt) ? n.debt : 0;
+    const ev = sumPV + pvTV, equity = ev + cash - debt;
+    const fx = o.fx != null ? o.fx : n.needFx ? n.fx : 1;
+    const fair = equity * pick(o.unitMult, isNum(n.unitMult) ? n.unitMult : 1e6) * fx / (n.shares * pick(o.shareMult, isNum(n.shareMult) ? n.shareMult : 1e6));
+    const price = isNum(n.price) && n.price > 0 ? n.price : null;
+    const mos = price ? (fair - price) / price : null;
+    return { fx: fx, years: years, tv: tv, pvTV: pvTV, sumPV: sumPV, ev: ev, cash: cash, debt: debt, equity: equity, fair: fair, price: price, mos: mos,
+      signal: signalFor(mos, n), f0: f0, rev0: rev0, m0: m0 };
+  }
+  function evalCase(st, s) {
+    const n = readModel(st, s), b = blockers(n);
+    return { s: s, n: n, b: b, res: b.ok ? compute(n) : null, filled: s === 'base' || scFilledOf(st, s) };
+  }
+  function weightedOf(all) {
+    const done = all.filter(x => x.res && x.filled);
+    if (done.length < 2) return null;
+    let ws = done.map(x => (isNum(x.n.w) ? Math.max(0, x.n.w) : DEF_W[x.s]));
+    let sum = ws.reduce((a, b) => a + b, 0), equal = false;
+    if (sum <= 0) { ws = ws.map(() => 1); sum = ws.length; equal = true; }
+    const fair = done.reduce((acc, x, i) => acc + x.res.fair * ws[i], 0) / sum;
+    const price = done[0].res.price, mos = price ? (fair - price) / price : null;
+    const fairs = done.map(x => x.res.fair);
+    return { fair: fair, price: price, mos: mos, signal: signalFor(mos, done[0].n), count: done.length, min: Math.min.apply(null, fairs), max: Math.max.apply(null, fairs),
+      equal: equal, share: done.reduce((m, x, i) => { m[x.s] = ws[i] / sum; return m; }, {}) };
+  }
+  // Reverse DCF: the years 1–5 growth (or target margin) that makes fair value equal the price, holding everything else.
+  function implied(n) {
+    if (!isNum(n.price) || n.price <= 0) return null;
+    const key = n.method === 'margin' ? 'tm' : 'g1';
+    if (key === 'g1' && !(n.fcf - (isNum(n.sbc) ? n.sbc : 0) > 0)) return null;
+    const lo = key === 'tm' ? -30 : -90, hi = key === 'tm' ? 80 : 200;
+    const f = x => { const o = {}; o[key] = x; const r = compute(n, o); return r ? r.fair - n.price : NaN; };
+    let a = lo, b = hi;
+    const fa = f(a), fb = f(b);
+    if (!isNum(fa) || !isNum(fb)) return null;
+    if (fa > 0) return { key: key, below: true, value: lo };
+    if (fb < 0) return { key: key, above: true, value: hi };
+    for (let i = 0; i < 80; i++) { const m = (a + b) / 2; if (f(m) > 0) b = m; else a = m; }
+    return { key: key, value: (a + b) / 2 };
+  }
+  // Dividend discount model: dividends grow at dg for 10 years, then at terminal growth forever.
+  function ddm(n) {
+    if (!isNum(n.dps) || n.dps <= 0 || !isNum(n.r) || !isNum(n.tg)) return null;
+    const r = n.r / 100, tg = n.tg / 100, dg = isNum(n.dg) ? n.dg / 100 : tg;
+    if (!(r > tg)) return null;
+    let d = n.dps, pv = 0;
+    for (let i = 1; i <= 10; i++) { d *= 1 + dg; pv += d / Math.pow(1 + r, i); }
+    return pv + d * (1 + tg) / (r - tg) / Math.pow(1 + r, 10);
+  }
+  // Dividends paid, in the reporting currency and amount unit (the dividend per share is in the share price currency).
+  const dividendsPaid = n => {
+    const fx = n.needFx ? n.fx : 1;
+    return isNum(n.dps) && n.dps > 0 && isNum(n.shares) && n.shares > 0 && isNum(fx) && fx > 0 ? n.dps * n.shares * n.shareMult / n.unitMult / fx : null;
+  };
+
+  /* ================= saved snapshots ================= */
+  // What "Save snapshot" stores (version 2): the numbers as numbers, each case's inputs, and the result.
+  function snapshot(st) {
+    const clean = v => (isNum(v) ? v : null);
+    const all = SCN.map(s => evalCase(st, s)), W = weightedOf(all), base = all[1];
+    const inputs = {};
+    FACT_KEYS.forEach(k => { inputs[k] = clean(base.n[k]); });
+    Object.assign(inputs, { currency: curOf(st), rcurrency: st.values.rcurrency || null, unit: st.values.unit, sharesUnit: st.values.sharesUnit, baseYear: baseYearOf(st), method: methodOf(st) });
+    const scenarios = {};
+    all.forEach(x => {
+      if (!x.filled) { scenarios[x.s] = null; return; }
+      const o = {}; SC_KEYS.forEach(k => { o[k] = clean(x.n[k]); }); scenarios[x.s] = o;
+    });
+    const head = W || (base.res ? { fair: base.res.fair, price: base.res.price, mos: base.res.mos, signal: base.res.signal } : null);
+    const fairOf = s => { const x = all.find(z => z.s === s); return x && x.res && x.filled ? clean(x.res.fair) : null; };
+    return {
+      inputs: inputs, scenarios: scenarios,
+      result: head ? { fair: clean(head.fair), price: clean(head.price), mos: clean(head.mos), signal: head.signal || null, weighted: !!W,
+        bear: fairOf('bear'), base: fairOf('base'), bull: fairOf('bull'), ddm: clean(ddm(base.n)) } : null,
+    };
+  }
+  // A saved snapshot back into a model, the way "Load" fills in the boxes. Returns null for saves older than version 2.
+  function fromSnapshot(e) {
+    if (!e || !e.scenarios) return null;
+    const i = e.inputs || {};
+    const values = {
+      ticker: e.ticker, name: e.name || '', currency: i.currency || '$', rcurrency: i.rcurrency || '', method: i.method === 'margin' ? 'margin' : 'fcf',
+      unit: UNITS[i.unit] ? i.unit : '1e6', sharesUnit: SHARE_UNITS[i.sharesUnit] ? i.sharesUnit : '1e6',
+      baseYear: String(i.baseYear || DEFAULTS.baseYear),
+    };
+    FACT_KEYS.forEach(k => { values[k] = isNum(i[k]) ? fmtInput(i[k], F[k].kind) : (k === 'buyAt' || k === 'sellAt' ? DEFAULTS[k] : ''); });
+    const sc = emptySc();
+    SCN.forEach(s => {
+      const o = e.scenarios[s];
+      if (o) SC_KEYS.forEach(k => { sc[s][k] = isNum(o[k]) ? fmtInput(o[k], F[k].kind) : (k === 'w' ? String(DEF_W[s]) : ''); });
+    });
+    return { values: values, sc: sc, active: 'base' };
+  }
+
+  return {
+    UNITS: UNITS, SHARE_UNITS: SHARE_UNITS, CURRENCIES: CURRENCIES, F: F, FKEYS: FKEYS, SC_KEYS: SC_KEYS, FACT_KEYS: FACT_KEYS, SCN: SCN, DEF_W: DEF_W, REQ: REQ, DEFAULTS: DEFAULTS,
+    isNum: isNum, pick: pick, normTicker: normTicker, emptySc: emptySc, toAscii: toAscii, parseRaw: parseRaw, fmtInput: fmtInput,
+    unitOf: unitOf, sharesOf: sharesOf, curOf: curOf, rcurOf: rcurOf, needFxOf: needFxOf, methodOf: methodOf, scFilledOf: scFilledOf, baseYearOf: baseYearOf, rawOf: rawOf, num: num,
+    readModel: readModel, blockers: blockers, rule: rule, signalFor: signalFor, compute: compute, evalCase: evalCase, weightedOf: weightedOf,
+    implied: implied, ddm: ddm, dividendsPaid: dividendsPaid, snapshot: snapshot, fromSnapshot: fromSnapshot,
+  };
+})();
 (function () {
   'use strict';
 
@@ -857,6 +1225,105 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     aiYou: ['You', '你'],
     aiClaude: ['Claude', 'Claude'],
     aiMethodName: [m => (m === 'margin' ? 'Revenue × FCF margin' : 'Grow free cash flow'), m => (m === 'margin' ? '營收 × FCF 利潤率' : '自由現金流成長')],
+
+    /* Sync & Claude */
+    btnSync: ['Sync & Claude', '同步與 Claude'],
+    syTitle: ['Sync & Claude', '同步與 Claude'],
+    syClose: ['Close', '關閉'],
+    sySyncH: ['1 · Sync your saves', '1 · 同步你的紀錄'],
+    syIntro: ['Keep your saved stocks on all your devices through a free Firebase project that only you own. If you use Checkmate, you can use the same Firebase project and the same account.',
+      '透過一個只屬於你的免費 Firebase 專案，讓儲存的股票出現在你所有裝置上。如果你有用 Checkmate，可以用同一個 Firebase 專案和同一個帳戶。'],
+    syCfgL: ['Firebase settings or setup code', 'Firebase 設定或設定碼'],
+    syCfgHelp: ['First time? Paste the firebaseConfig block from your Firebase project (steps below). Already set up on another device, or in Checkmate? Paste the setup code shown there.',
+      '第一次使用？貼上 Firebase 專案的 firebaseConfig 區塊（步驟在下面）。已在另一部裝置或 Checkmate 設定好？貼上那裡顯示的設定碼。'],
+    syEmail: ['Email', '電郵'],
+    syPw: ['Password', '密碼'],
+    sySignIn: ['Sign in', '登入'],
+    sySignUp: ['Create account', '建立帳戶'],
+    syWorking: ['Signing in…', '正在登入…'],
+    syHowH: ['How to set up sync (once, about 5 minutes)', '如何設定同步（只需一次，約 5 分鐘）'],
+    syHow: ['<li>Open <a href="https://console.firebase.google.com" target="_blank" rel="noopener">console.firebase.google.com</a>, sign in with a Google account and create a project (any name).</li>'
+      + '<li>Open <b>Build → Authentication → Get started</b>, choose <b>Email/Password</b>, switch it on and save.</li>'
+      + '<li>Open <b>Build → Firestore Database → Create database</b>, pick a location near you and start in production mode.</li>'
+      + '<li>In Firestore, open <b>Rules</b>, replace everything with these rules and press <b>Publish</b>:<pre>rules_version = &#39;2&#39;;\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /users/{uid}/{document=**} {\n      allow read, write: if request.auth != null &amp;&amp; request.auth.uid == uid;\n    }\n  }\n}</pre></li>'
+      + '<li>Open <b>Project settings</b> (the gear) → <b>Your apps</b> → the web icon <b>&lt;/&gt;</b>, register an app, and copy the <b>firebaseConfig = { … }</b> block into the box above.</li>'
+      + '<li>Type an email and a password and press <b>Create account</b>. On your other devices, paste the setup code and press <b>Sign in</b>.</li>',
+      '<li>打開 <a href="https://console.firebase.google.com" target="_blank" rel="noopener">console.firebase.google.com</a>，用 Google 帳戶登入並建立專案（名稱隨意）。</li>'
+      + '<li>打開 <b>Build → Authentication → Get started</b>，選 <b>Email/Password</b>，開啟後儲存。</li>'
+      + '<li>打開 <b>Build → Firestore Database → Create database</b>，選擇離你近的地區，以 production mode 開始。</li>'
+      + '<li>在 Firestore 打開 <b>Rules</b>，把內容全部換成下面的規則，再按 <b>Publish</b>：<pre>rules_version = &#39;2&#39;;\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /users/{uid}/{document=**} {\n      allow read, write: if request.auth != null &amp;&amp; request.auth.uid == uid;\n    }\n  }\n}</pre></li>'
+      + '<li>打開 <b>Project settings</b>（齒輪）→ <b>Your apps</b> → 網頁圖示 <b>&lt;/&gt;</b>，註冊一個 app，把 <b>firebaseConfig = { … }</b> 區塊複製到上面的方格。</li>'
+      + '<li>輸入電郵和密碼，按「建立帳戶」。在其他裝置貼上設定碼，再按「登入」。</li>'],
+    syOn: [(e, p) => 'Signed in as ' + e + ' (Firebase project ' + p + ').', (e, p) => '已登入：' + e + '（Firebase 專案 ' + p + '）。'],
+    syLast: [d => 'Last synced ' + d + '.', d => '上次同步：' + d + '。'],
+    syNever: ['Syncing…', '同步中…'],
+    syNow: ['Sync now', '立即同步'],
+    syOut: ['Sign out', '登出'],
+    syCodeL: ['Setup code for your other devices', '給其他裝置用的設定碼'],
+    syCodeHelp: ['Paste it into Sync & Claude on another device, then sign in with the same email and password. It holds your Firebase project details, not your password.',
+      '在另一部裝置的「同步與 Claude」貼上，再用同一個電郵和密碼登入。它包含你的 Firebase 專案資料，不包含密碼。'],
+    syCopyBtn: ['Copy', '複製'],
+    syCopied: ['Setup code copied.', '已複製設定碼。'],
+    sySignedIn: ['Sync is on. Your saves now appear on every device you sign in on.', '已開啟同步，你的紀錄會出現在每部已登入的裝置上。'],
+    syOutDone: ['Signed out. Your saves stay in this browser.', '已登出，紀錄仍保留在這個瀏覽器。'],
+    syErrCfg: ['Paste the firebaseConfig block or a setup code first.', '請先貼上 firebaseConfig 區塊或設定碼。'],
+    syErrCfgBad: ['Couldn’t read that. Copy the whole firebaseConfig = { … } block, or the whole setup code.', '無法讀取。請複製完整的 firebaseConfig = { … } 區塊或完整的設定碼。'],
+    syErrLogin: ['That email or password isn’t right.', '電郵或密碼不正確。'],
+    syErrExists: ['There’s already an account with this email. Press Sign in instead.', '這個電郵已有帳戶，請改按「登入」。'],
+    syErrWeak: ['Use a password with at least 6 characters.', '密碼至少要有 6 個字元。'],
+    syErrEmail: ['Enter a valid email address.', '請輸入有效的電郵地址。'],
+    syErrPw: ['Enter your password.', '請輸入密碼。'],
+    syErrNoPw: ['Email/Password sign-in is off in your Firebase project. Turn it on in Authentication → Sign-in method.', '你的 Firebase 專案沒有開啟 Email/Password 登入，請在 Authentication → Sign-in method 開啟。'],
+    syErrNoAuth: ['Authentication isn’t set up in your Firebase project yet. Open Authentication and press Get started.', '你的 Firebase 專案還沒設定 Authentication，請打開 Authentication 並按 Get started。'],
+    syErrKey: ['The apiKey in your Firebase settings isn’t accepted. Copy the settings again from Project settings.', '你的 Firebase 設定中的 apiKey 無效，請從 Project settings 重新複製。'],
+    syErrMany: ['Too many tries. Wait a minute, then try again.', '嘗試次數太多，請等一分鐘再試。'],
+    syErrNet: ['Can’t reach Firebase. Check your internet connection.', '連不上 Firebase，請檢查網絡連線。'],
+    syErrRules: ['Your Firestore rules are blocking sync. Paste the rules from the steps into Firestore → Rules and press Publish.', '你的 Firestore 規則擋住了同步。請把步驟中的規則貼到 Firestore → Rules 並按 Publish。'],
+    syErrNoDb: ['There’s no Firestore database in this project yet. Create one under Firestore Database → Create database.', '這個專案還沒有 Firestore 資料庫，請在 Firestore Database → Create database 建立。'],
+    syErrExpired: ['Your sign-in has ended (for example, the password changed). Sign in again.', '你的登入已失效（例如密碼已更改），請重新登入。'],
+    syErrOther: [m => 'Sync didn’t work: ' + (m || 'unknown error') + '.', m => '同步失敗：' + (m || '未知錯誤') + '。'],
+    stSync: ['Saves synced to your Firebase', '紀錄已同步到你的 Firebase'],
+    stSyncErr: ['Sync paused. Open Sync & Claude', '同步暫停，請打開「同步與 Claude」'],
+    syClaudeSaved: [(tk, p) => 'Claude saved a valuation for ' + tk + ': fair value ' + p + '.', (tk, p) => 'Claude 已儲存 ' + tk + ' 的估值：合理價 ' + p + '。'],
+    syOpen: ['Open', '開啟'],
+    byClaude: ['Saved by Claude', 'Claude 儲存'],
+    asOfL: [p => 'figures from ' + p, p => '數字來自 ' + p],
+    aiAltT: ['Or use your Claude plan instead of an API key: connect the calculator to Claude once, then ask Claude in any chat.', '也可以用你的 Claude 方案代替 API 金鑰：把計算機連接到 Claude 一次，之後在任何對話中直接問 Claude。'],
+    aiAltBtn: ['Set up Sync & Claude', '設定同步與 Claude'],
+    aiAltOn: ['Claude is connected to this calculator through your Claude account. Ask in any Claude chat, for example “Build a DCF model for NVDA and save it”, and the valuation appears here.', 'Claude 已透過你的 Claude 帳戶連接到這個計算機。在任何 Claude 對話中直接問，例如「幫 NVDA 建立 DCF 模型並儲存」，估值就會出現在這裡。'],
+    aiAltOnBtn: ['Sync & Claude', '同步與 Claude'],
+    clH: ['2 · Use Claude with your Claude account', '2 · 用你的 Claude 帳戶使用 Claude'],
+    clIntro: ['Just like Checkmate: add the calculator to Claude once, then ask in any Claude chat, on the web, in the desktop app or on your phone. For example, “Build a DCF model for VST and save it”. Claude looks up the latest figures, runs this calculator’s own maths and saves the valuation here. It uses your Claude plan, so you don’t need an API key.',
+      '和 Checkmate 一樣：把計算機加到 Claude 一次，之後在任何 Claude 對話中（網頁、桌面 app 或手機）直接問，例如「幫 VST 建立 DCF 模型並儲存」。Claude 會查最新數字、用這個計算機本身的公式計算，並把估值存到這裡。它使用你的 Claude 方案，不需要 API 金鑰。'],
+    clNeed: ['Turn on sync above first. Claude saves valuations through it.', '請先開啟上面的同步，Claude 會透過它儲存估值。'],
+    clStep1: ['<b>Copy your connector code.</b> It already holds your Firebase project details and a private key made just for you, so don’t share it.', '<b>複製你的連接器程式碼。</b>它已包含你的 Firebase 專案資料和專為你產生的私密金鑰，請不要分享。'],
+    clCopy: ['Copy connector code', '複製連接器程式碼'],
+    clSave: ['Save as file', '另存為檔案'],
+    clCopied: ['Connector code copied.', '已複製連接器程式碼。'],
+    clCopyFail: ['Couldn’t copy. Use Save as file instead.', '無法複製，請改用「另存為檔案」。'],
+    clStep2: ['<b>Put it on your free Cloudflare account.</b> Open <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">dash.cloudflare.com</a> and sign up or sign in. Go to <b>Workers &amp; Pages</b> (it may be under <b>Compute</b>) → <b>Create</b> → <b>Start with Hello World!</b>, name it <b>dcf</b> and press <b>Deploy</b>. Then press <b>Edit code</b>, delete everything in worker.js, paste the code and press <b>Deploy</b>.',
+      '<b>放到你的免費 Cloudflare 帳戶。</b>打開 <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">dash.cloudflare.com</a> 註冊或登入。前往 <b>Workers &amp; Pages</b>（可能在 <b>Compute</b> 下）→ <b>Create</b> → <b>Start with Hello World!</b>，名稱填 <b>dcf</b> 並按 <b>Deploy</b>。然後按 <b>Edit code</b>，刪除 worker.js 的所有內容，貼上程式碼，再按 <b>Deploy</b>。'],
+    clStep3: ['<b>Paste the Worker’s address</b> (it ends in .workers.dev) and press Check.', '<b>貼上 Worker 的網址</b>（以 .workers.dev 結尾），再按「檢查」。'],
+    clUrlAria: ['Worker address', 'Worker 網址'],
+    clCheck: ['Check', '檢查'],
+    clChecking: ['Checking…', '檢查中…'],
+    clCheckOk: [v => 'Your connector is running (version ' + v + ').', v => '你的連接器正在運作（版本 ' + v + '）。'],
+    clCheckOld: [v => 'It’s running an older connector (version ' + v + '). Copy the code again, paste it over the old code in Cloudflare and press Deploy.', v => '它正在執行較舊的連接器（版本 ' + v + '）。請再次複製程式碼，在 Cloudflare 貼上覆蓋舊的程式碼並按 Deploy。'],
+    clErrUrl: ['Paste the address Cloudflare shows for your Worker, like https://dcf.yourname.workers.dev', '請貼上 Cloudflare 顯示的 Worker 網址，例如 https://dcf.yourname.workers.dev'],
+    clErrReach: [h => 'Couldn’t reach ' + h + '. Check the address, and that you pressed Deploy in Cloudflare.', h => '連不上 ' + h + '。請檢查網址，並確認已在 Cloudflare 按 Deploy。'],
+    clErrNotConn: ['That Worker isn’t running the DCF connector yet. In Cloudflare press Edit code, replace everything with the connector code, then press Deploy.', '這個 Worker 還沒有執行 DCF 連接器。請在 Cloudflare 按 Edit code，把內容全部換成連接器程式碼，再按 Deploy。'],
+    clErrNoCfg: ['The connector is running without your settings. Copy the connector code again (it includes them), paste it into the Worker and press Deploy.', '連接器正在執行，但沒有你的設定。請再次複製連接器程式碼（已包含設定），貼到 Worker 並按 Deploy。'],
+    clErrOther: [(o, m) => 'This connector belongs to the Firebase project “' + o + '”, but your sync uses “' + m + '”. Copy the connector code again and deploy it.', (o, m) => '這個連接器屬於 Firebase 專案「' + o + '」，但你的同步使用「' + m + '」。請再次複製連接器程式碼並部署。'],
+    clStep4: ['<b>Add it to Claude.</b> Claude opens its Add custom connector box with the name and address filled in. Press <b>Add</b>, then <b>Connect</b>, and sign in with your sync email and password. You can also add it yourself in Claude under <b>Customize → Connectors → Add custom connector</b>, with the address ending in /mcp.',
+      '<b>加到 Claude。</b>Claude 會打開 Add custom connector 視窗，名稱和網址已填好。按 <b>Add</b>，再按 <b>Connect</b>，用你同步所用的電郵和密碼登入。你也可以在 Claude 的 <b>Customize → Connectors → Add custom connector</b> 自行加入，網址以 /mcp 結尾。'],
+    clAdd: ['Add to Claude', '加到 Claude'],
+    clAddHint: ['Check the address first.', '請先檢查網址。'],
+    clStep5: ['<b>Ask Claude.</b> In a chat, turn on <b>DCF Calculator</b> under <b>+ → Connectors</b>, then ask, for example: “Build a DCF model for VST and save it”, “Update my WTC.AX valuation with today’s share price”, or “Which of my saved stocks has the biggest margin of safety?” Free Claude plans can add one custom connector.',
+      '<b>問 Claude。</b>在對話中，於 <b>+ → Connectors</b> 開啟 <b>DCF Calculator</b>，然後問，例如：「幫 VST 建立 DCF 模型並儲存」、「用今天的股價更新我的 WTC.AX 估值」或「我儲存的股票中哪一隻安全邊際最大？」免費 Claude 方案可以加入一個自訂連接器。'],
+    clConnected: [(d, e) => 'Claude connected on ' + d + ' (' + e + ').', (d, e) => 'Claude 已於 ' + d + ' 連接（' + e + '）。'],
+    clNotYet: ['Claude hasn’t connected yet.', 'Claude 尚未連接。'],
+    clDisconnect: ['Disconnect', '中斷連接'],
+    clDisconnected: ['Claude can no longer use your calculator. To undo this, connect again from Claude.', 'Claude 已無法使用你的計算機。如要恢復，請在 Claude 再次連接。'],
   };
   function t(key) {
     const e = T[key];
@@ -873,53 +1340,8 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
   const caseName = s => t('caseOf', t('sc' + s));
 
   /* ================= configuration ================= */
-  const UNITS = {
-    '1e3': { mult: 1e3, short: 'K', word: ['thousands', '千'], label: ['Thousands (K)', '千 (K)'] },
-    '1e6': { mult: 1e6, short: 'M', word: ['millions', '百萬'], label: ['Millions (M)', '百萬 (M)'] },
-    '1e9': { mult: 1e9, short: 'B', word: ['billions', '十億'], label: ['Billions (B)', '十億 (B)'] },
-  };
-  const SHARE_UNITS = {
-    '1':   { mult: 1,   label: ['shares', '股'], word: ['single shares', '股'] },
-    '1e3': { mult: 1e3, label: ['K', '千股'], word: ['thousands of shares', '千股'] },
-    '1e6': { mult: 1e6, label: ['M', '百萬股'], word: ['millions of shares', '百萬股'] },
-    '1e9': { mult: 1e9, label: ['B', '十億股'], word: ['billions of shares', '十億股'] },
-  };
-  const CURRENCIES = [['$', ['$ · US dollar', '$ · 美元']], ['A$', ['A$ · Australian dollar', 'A$ · 澳幣']],['NT$', ['NT$ · NT dollar', 'NT$ · 新台幣']], ['HK$', ['HK$ · HK dollar', 'HK$ · 港幣']],
-    ['¥', ['¥ · Yen / Yuan', '¥ · 日圓／人民幣']], ['€', ['€ · Euro', '€ · 歐元']], ['£', ['£ · Pound', '£ · 英鎊']]];
-
-  // sc: true = kept separately for each case. en/zh labels (zh follows the sheet), s = short names for messages, h = hints.
-  const F = {
-    fcf:     { kind: 'money', en: 'TTM free cash flow', zh: '自由現金流（基期）', s: ['TTM free cash flow', '自由現金流'], h: ['Last 12 months. Negative: -120 or (120).', '近 12 個月。負數可輸入 -120 或 (120)。'] },
-    revenue: { kind: 'money', en: 'TTM revenue', zh: 'TTM 營收', s: ['TTM revenue', 'TTM 營收'], h: ['Needed for the Revenue × FCF margin method and the margin check.', '「營收 × FCF 利潤率」方法和利潤率檢查需要。'] },
-    sbc:     { kind: 'money', en: 'Stock-based compensation', zh: '股票薪酬 (SBC)', s: ['stock-based pay', '股票薪酬'], h: ['Optional. Subtracted from FCF, because paying staff in stock dilutes shareholders.', '選填。會從 FCF 扣除，因為用股票發薪會稀釋股東權益。'] },
-    g1:      { kind: 'pct', sc: true, en: 'FCF growth, years 1–5', zh: '未來成長率（一~五年）', s: ['FCF growth for years 1–5', '一~五年成長率'], h: ['Yearly growth of free cash flow.', '自由現金流每年的成長率。'] },
-    rg1:     { kind: 'pct', sc: true, en: 'Revenue growth, years 1–5', zh: '營收成長（y1-5）', s: ['revenue growth for years 1–5', '一~五年營收成長'], h: ['Optional. For the margin check.', '選填。用於利潤率檢查。'], hM: ['Drives revenue in this method.', '此方法用它推估營收。'] },
-    g2:      { kind: 'pct', sc: true, en: 'FCF growth, years 6–10', zh: '二階成長率（六~十年）', s: ['FCF growth for years 6–10', '六~十年成長率'], h: ['Usually lower than years 1–5.', '通常低於一~五年。'], copyFrom: 'g1' },
-    rg2:     { kind: 'pct', sc: true, en: 'Revenue growth, years 6–10', zh: '營收成長（y6-10）', s: ['revenue growth for years 6–10', '六~十年營收成長'], h: ['Optional.', '選填。'], hM: ['Usually lower than years 1–5.', '通常低於一~五年。'], copyFrom: 'rg1' },
-    tm:      { kind: 'pct', sc: true, en: 'Target FCF margin', zh: '目標 FCF 利潤率', s: ['target FCF margin', '目標 FCF 利潤率'], h: ['FCF as a % of revenue once the business settles.', '營運穩定後 FCF 佔營收的比例。'] },
-    tmYear:  { kind: 'int', sc: true, en: 'Year the target is reached', zh: '達到目標的年份', s: ['target year', '目標年份'], h: ['1–10. The margin moves in a straight line until then. Blank = 5.', '1–10。在此之前利潤率直線變化，空白視為 5。'], ph: '5' },
-    tg:      { kind: 'pct', sc: true, en: 'Terminal growth', zh: '永久成長率', s: ['terminal growth', '永久成長率'], h: ['Growth after year 10, forever. Usually 2–3%.', '第十年之後的永續成長率，通常 2–3%。'] },
-    w:       { kind: 'pct', sc: true, en: 'Weight of this case', zh: '此情境權重', s: ['weight', '權重'], h: ['How likely you think this case is. Used for the weighted value.', '你認為此情境發生的機率，用於加權合理價。'] },
-    r:       { kind: 'pct', en: 'Discount rate', zh: '期望折現率（期望收益率）', s: ['discount rate', '折現率'], h: ['Your required return. Discounts every year, as in the sheet.', '你要求的報酬率。和試算表一樣，每一年都用它折現。'] },
-    wacc:    { kind: 'pct', en: 'WACC', zh: '折現率 (WACC)', s: ['WACC', 'WACC'], h: ['Reference only.', '僅供參考。'], useWacc: true },
-    cash:    { kind: 'money', en: 'Cash & investments', zh: '(+) 現金及其他投資', s: ['cash & investments', '現金及其他投資'], h: ['Blank counts as 0.', '空白視為 0。'] },
-    debt:    { kind: 'money', en: 'Total debt', zh: '(−) 總負債', s: ['total debt', '總負債'], h: ['Interest-bearing debt, not all liabilities. Blank counts as 0.', '只填有息負債，不是全部負債。空白視為 0。'] },
-    shares:  { kind: 'shares', en: 'Shares outstanding', zh: '流通股數', s: ['shares outstanding', '流通股數'], h: ['Pick the unit your source uses.', '選擇和資料來源相同的單位。'] },
-    price:   { kind: 'price', en: 'Current share price', zh: '股票當前價格', s: ['current share price', '股票當前價格'], h: ['Needed for margin of safety.', '計算安全邊際需要。'] },
-    dps:     { kind: 'price', en: 'Dividend per share, yearly', zh: '每股股利（年）', s: ['dividend per share', '每股股利'], h: ['Optional. Last 12 months, or the quarterly dividend × 4.', '選填。近 12 個月，或季配息 × 4。'] },
-    dg:      { kind: 'pct', en: 'Dividend growth, years 1–10', zh: '股利成長率（1–10 年）', s: ['dividend growth', '股利成長率'], h: ['Optional. Blank = terminal growth.', '選填。空白視為永久成長率。'] },
-    past5:   { kind: 'pct', en: 'Past 5-year growth', zh: '過去五年成長率', s: ['past 5-year growth', '過去五年成長率'], h: ['Compared with your growth inputs.', '用來對照你的成長假設。'] },
-    ath:     { kind: 'pct', en: 'Peak FCF margin (all-time high)', zh: '歷史最高 FCF 利潤率', s: ['peak FCF margin', '歷史最高 FCF 利潤率'], h: ['Flags projected margins above it.', '預測利潤率超過時會提醒。'] },
-    buyAt:   { kind: 'pct', en: 'Buy when margin of safety ≥', zh: '安全邊際 ≥ 此值時買進', s: ['buy level', '買進門檻'], h: ['Default 25%.', '預設 25%。'], ph: '25' },
-    sellAt:  { kind: 'pct', en: 'Sell when margin of safety ≤', zh: '安全邊際 ≤ 此值時賣出', s: ['sell level', '賣出門檻'], h: ['Default −10%. Set both to 0 to match the sheet.', '預設 −10%。兩者都設 0 就和試算表一樣。'], ph: '-10' },
-    fx:      { kind: 'rate', en: 'Exchange rate', zh: '匯率', s: ['exchange rate', '匯率'], h: ['', ''] },
-  };
-  const FKEYS = Object.keys(F);
-  const SC_KEYS = FKEYS.filter(k => F[k].sc);
-  const FACT_KEYS = FKEYS.filter(k => !F[k].sc);
-  const SCN = ['bear', 'base', 'bull'];
-  const DEF_W = { bear: 25, base: 50, bull: 25 };
-  const REQ = { fcf: ['fcf', 'g1', 'g2', 'r', 'tg', 'shares'], margin: ['fcf', 'revenue', 'rg1', 'rg2', 'tm', 'r', 'tg', 'shares'] };
+  // Fields, units and currencies live in the shared core (src/dcf-core.js), with the maths.
+  const { UNITS, SHARE_UNITS, CURRENCIES, F, FKEYS, SC_KEYS, FACT_KEYS, SCN, DEF_W, REQ } = DCF;
   const ORDER = { fcf: ['g1', 'rg1', 'g2', 'rg2', 'tg', 'w'], margin: ['rg1', 'tm', 'rg2', 'tmYear', 'tg', 'w'] };
   const GROUPS = [
     { en: 'Base year', zh: '基期', keys: ['fcf', 'revenue', 'sbc'], c3: true },
@@ -931,7 +1353,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     { en: 'Decision rule', zh: '買賣規則', keys: ['buyAt', 'sellAt'] },
   ];
   const SETTINGS = ['ticker', 'name', 'currency', 'rcurrency', 'unit', 'sharesUnit', 'baseYear', 'method'];
-  const DEFAULTS = { ticker: '', name: '', currency: '$', rcurrency: '',unit: '1e6', sharesUnit: '1e6', baseYear: String(new Date().getFullYear()), method: 'fcf', buyAt: '25', sellAt: '-10' };
+  const DEFAULTS = DCF.DEFAULTS;
   const EXAMPLE_NAME = ['Example Co. (fictional)', '範例公司（虛構）'];
   const EXAMPLE = {
     values: { ticker: 'EXMP', currency: '$', unit: '1e6', sharesUnit: '1e6', baseYear: DEFAULTS.baseYear, method: 'fcf',
@@ -948,7 +1370,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
   const LS_DRAFT_OLD = 'dcf-draft-v1';
   const LS_LANG = 'dcf-lang-v1';
   const MINUS = '−';
-  const APP_VERSION = '1.1.0';
+  const APP_VERSION = '1.2.0';
 
   /* ================= helpers ================= */
   const byId = id => document.getElementById(id);
@@ -965,60 +1387,22 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
   function emptyFilled() { return { v: new Set(), sc: { bear: new Set(), base: new Set(), bull: new Set() } }; }
 
   const state = { values: Object.assign({}, DEFAULTS), sc: emptySc(), active: 'base', example: false, loadedFrom: null, dirty: false, openTicker: null, confirmDelete: null, filter: '', aiFilled: emptyFilled() };
-  const unitInfo = () => UNITS[state.values.unit] || UNITS['1e6'];
-  const shareInfo = () => SHARE_UNITS[state.values.sharesUnit] || SHARE_UNITS['1e6'];
-  const cur = () => state.values.currency || '$';
+  const unitInfo = () => DCF.unitOf(state);
+  const shareInfo = () => DCF.sharesOf(state);
+  const cur = () => DCF.curOf(state);
   // Financial statements can use another currency than the share price (e.g. WiseTech reports in US$, trades in A$).
-  const rcur = () => state.values.rcurrency || cur();
-  const needFx = () => !!state.values.rcurrency && state.values.rcurrency !== cur();
-  const method = () => (state.values.method === 'margin' ? 'margin' : 'fcf');
-  const normTicker = s => String(s || '').trim().toUpperCase().slice(0, 24);
-  const scFilled = s => SC_KEYS.some(k => k !== 'w' && String((state.sc[s] || {})[k] || '').trim() !== '');
+  const rcur = () => DCF.rcurOf(state);
+  const needFx = () => DCF.needFxOf(state);
+  const method = () => DCF.methodOf(state);
+  const normTicker = DCF.normTicker;
+  const scFilled = s => DCF.scFilledOf(state, s);
 
   /* ================= number parsing ================= */
   // Accepts 1,234.5 · $1.2B · (120) · 12% · 25億 · full-width digits from CJK keyboards.
-  const SUF = { k: 1e3, m: 1e6, b: 1e9, t: 1e12, '萬': 1e4, '万': 1e4, '億': 1e8, '亿': 1e8 };
-  function toAscii(s) { return s.replace(/[０-９．－％（），＋]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)); }
-  function parseRaw(raw, kind) {
-    let s = toAscii(String(raw == null ? '' : raw)).trim();
-    if (!s) return { empty: true };
-    s = s.replace(/−/g, '-').replace(/[\s,_]/g, '').replace(/^([-+]?)(?:US|NT|HK|RMB|CN|AU|A)?[$¥€£]/i, '$1');
-    let neg = false;
-    const paren = s.match(/^\((.*)\)$/);
-    if (paren) { neg = true; s = paren[1]; }
-    let pct = false;
-    if (s.endsWith('%')) { pct = true; s = s.slice(0, -1); }
-    const m = s.match(/^([-+]?)(\d+(?:\.\d*)?|\.\d+)([kmbt萬万億亿]?)$/i);
-    if (!m) return { empty: false, bad: true };
-    let v = parseFloat(m[2]);
-    if (m[1] === '-') v = -v;
-    if (neg) v = -v;
-    const suf = m[3] ? SUF[m[3].toLowerCase()] : null;
-    if (suf && (kind === 'pct' || kind === 'int' || kind === 'rate')) return { empty: false, bad: true };
-    if (kind === 'rate' && !(v > 0)) return { empty: false, bad: true };
-    if (pct && kind !== 'pct') return { empty: false, bad: true };
-    if (kind === 'int' && (v !== Math.round(v) || v < 1 || v > 10)) return { empty: false, bad: true };
-    return { empty: false, bad: false, v: v, suf: suf, text: m[2] };
-  }
-  function baseMult(kind) { return kind === 'money' ? unitInfo().mult : kind === 'shares' ? shareInfo().mult : 1; }
-  const rawOf = (k, s) => (F[k].sc ? (state.sc[s || state.active] || {})[k] : state.values[k]);
-  function num(k, s) {
-    const p = parseRaw(rawOf(k, s), F[k].kind);
-    if (p.empty) return null;
-    if (p.bad) return NaN;
-    return p.suf ? p.v * p.suf / baseMult(F[k].kind) : p.v;
-  }
-  function fmtInput(v, kind) {
-    if (kind === 'pct') return String(+v.toFixed(4));
-    if (kind === 'int') return String(Math.round(v));
-    if (kind === 'rate') return String(+v.toFixed(6));
-    if (kind === 'price') return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-    return v.toLocaleString('en-US', { maximumFractionDigits: 4 });
-  }
-  function baseYear() {
-    const y = parseInt(toAscii(String(state.values.baseYear || '')), 10);
-    return y > 1900 && y < 3000 ? y : new Date().getFullYear();
-  }
+  const { toAscii, parseRaw, fmtInput } = DCF;
+  const rawOf = (k, s) => DCF.rawOf(state, k, s);
+  const num = (k, s) => DCF.num(state, k, s);
+  const baseYear = () => DCF.baseYearOf(state);
 
   /* ================= formatting ================= */
   const loc = () => (lang === 'zh' ? 'zh-TW' : undefined);
@@ -1049,116 +1433,10 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
   /* ================= the model ================= */
   // Sheet formulas, extended: FCF_t grows at C3 (yrs 1–5) / C8 (yrs 6–10), or revenue × a margin path in the margin method.
   // TV = FCF10 × (1 + g∞) / (r − g∞) · EV = NPV(r, years 1–10 incl. TV) · equity = EV + cash − debt · fair = equity / shares.
-  function readModel(s) {
-    const n = { method: method(), s: s };
-    FKEYS.forEach(k => { n[k] = num(k, s); });
-    return n;
-  }
-  function blockers(n) {
-    const req = REQ[n.method];
-    const keys = FACT_KEYS.concat(SC_KEYS);
-    const bad = keys.filter(k => Number.isNaN(n[k]));
-    const missing = req.filter(k => n[k] == null);
-    if (needFx() && n.fx == null) missing.push('fx');
-    const rate =isNum(n.r) && isNum(n.tg) && n.r <= n.tg;
-    const shares = isNum(n.shares) && n.shares <= 0;
-    const rev0 = n.method === 'margin' && isNum(n.revenue) && n.revenue <= 0;
-    const blocking = bad.filter(k => req.indexOf(k) >= 0 || (k === 'tmYear' && n.method === 'margin') || k === 'sbc' || (k === 'fx' && needFx()));
-    return { bad: bad, missing: missing, rate: rate, shares: shares, rev0: rev0, ok: !blocking.length && !missing.length && !rate && !shares && !rev0 };
-  }
-  function rule(n) {
-    const buy = isNum(n.buyAt) ? n.buyAt / 100 : 0.25, sell = isNum(n.sellAt) ? n.sellAt / 100 : -0.10;
-    return buy < sell ? { buy: 0, sell: 0, bad: true } : { buy: buy, sell: sell, bad: false };
-  }
-  function signalFor(mos, n) {
-    if (mos == null) return null;
-    const q = rule(n);
-    if (mos >= q.buy && mos > q.sell) return 'BUY';
-    if (mos <= q.sell) return 'SELL';
-    return 'HOLD';
-  }
-  function compute(n, o) {
-    o = o || {};
-    const r = pick(o.r, n.r) / 100, tg = pick(o.tg, n.tg) / 100;
-    if (!(r > tg)) return null;
-    const margin = n.method === 'margin';
-    const sbc = isNum(n.sbc) ? n.sbc : 0;
-    const f0 = n.fcf - sbc;
-    const rev0 = isNum(n.revenue) && n.revenue > 0 ? n.revenue : null;
-    if (margin && rev0 == null) return null;
-    const m0 = rev0 ? f0 / rev0 : null;
-    const g1 = pick(o.g1, n.g1) / 100, g2 = n.g2 / 100;
-    const rg1 = isNum(n.rg1) ? n.rg1 / 100 : null, rg2 = isNum(n.rg2) ? n.rg2 / 100 : null;
-    const tm = pick(o.tm, n.tm) / 100, N = isNum(n.tmYear) ? n.tmYear : 5;
-    const by = baseYear();
-    let f = f0, rev = rev0, sumPV = 0;
-    const years = [];
-    for (let i = 1; i <= 10; i++) {
-      const rg = i <= 5 ? rg1 : rg2, prev = f;
-      rev = rev != null && rg != null ? rev * (1 + rg) : null;
-      if (margin) f = rev * (i < N ? m0 + (tm - m0) * i / N : tm);
-      else f = f * (1 + (i <= 5 ? g1 : g2));
-      const g = margin ? (prev > 0 ? f / prev - 1 : null) : (i <= 5 ? g1 : g2);
-      const df = Math.pow(1 + r, -i), pv = f * df;
-      sumPV += pv;
-      years.push({ t: i, year: by + i, g: g, rev: rev, fcf: f, margin: rev ? f / rev : null, df: df, pv: pv });
-    }
-    const last = years[9];
-    const tv = last.fcf * (1 + tg) / (r - tg), pvTV = tv * last.df;
-    const cash = isNum(n.cash) ? n.cash : 0, debt = isNum(n.debt) ? n.debt : 0;
-    const ev = sumPV + pvTV, equity = ev + cash - debt;
-    const fx = o.fx != null ? o.fx : needFx() ? n.fx : 1;
-    const fair = equity * pick(o.unitMult, unitInfo().mult) * fx / (n.shares * pick(o.shareMult, shareInfo().mult));
-    const price = isNum(n.price) && n.price > 0 ? n.price : null;
-    const mos = price ? (fair - price) / price : null;
-    return { fx: fx, years: years, tv: tv, pvTV: pvTV, sumPV: sumPV, ev: ev, cash: cash, debt: debt, equity: equity, fair: fair, price: price, mos: mos,
-      signal: signalFor(mos, n), f0: f0, rev0: rev0, m0: m0 };
-  }
-  function evalCase(s) {
-    const n = readModel(s), b = blockers(n);
-    return { s: s, n: n, b: b, res: b.ok ? compute(n) : null, filled: s === 'base' || scFilled(s) };
-  }
-  function weightedOf(all) {
-    const done = all.filter(x => x.res && x.filled);
-    if (done.length < 2) return null;
-    let ws = done.map(x => (isNum(x.n.w) ? Math.max(0, x.n.w) : DEF_W[x.s]));
-    let sum = ws.reduce((a, b) => a + b, 0), equal = false;
-    if (sum <= 0) { ws = ws.map(() => 1); sum = ws.length; equal = true; }
-    const fair = done.reduce((acc, x, i) => acc + x.res.fair * ws[i], 0) / sum;
-    const price = done[0].res.price, mos = price ? (fair - price) / price : null;
-    const fairs = done.map(x => x.res.fair);
-    return { fair: fair, price: price, mos: mos, signal: signalFor(mos, done[0].n), count: done.length, min: Math.min.apply(null, fairs), max: Math.max.apply(null, fairs),
-      equal: equal, share: done.reduce((m, x, i) => { m[x.s] = ws[i] / sum; return m; }, {}) };
-  }
-  // Reverse DCF: the years 1–5 growth (or target margin) that makes fair value equal the price, holding everything else.
-  function implied(n) {
-    if (!isNum(n.price) || n.price <= 0) return null;
-    const key = n.method === 'margin' ? 'tm' : 'g1';
-    if (key === 'g1' && !(n.fcf - (isNum(n.sbc) ? n.sbc : 0) > 0)) return null;
-    const lo = key === 'tm' ? -30 : -90, hi = key === 'tm' ? 80 : 200;
-    const f = x => { const o = {}; o[key] = x; const r = compute(n, o); return r ? r.fair - n.price : NaN; };
-    let a = lo, b = hi;
-    const fa = f(a), fb = f(b);
-    if (!isNum(fa) || !isNum(fb)) return null;
-    if (fa > 0) return { key: key, below: true, value: lo };
-    if (fb < 0) return { key: key, above: true, value: hi };
-    for (let i = 0; i < 80; i++) { const m = (a + b) / 2; if (f(m) > 0) b = m; else a = m; }
-    return { key: key, value: (a + b) / 2 };
-  }
-  // Dividend discount model: dividends grow at dg for 10 years, then at terminal growth forever.
-  function ddm(n) {
-    if (!isNum(n.dps) || n.dps <= 0 || !isNum(n.r) || !isNum(n.tg)) return null;
-    const r = n.r / 100, tg = n.tg / 100, dg = isNum(n.dg) ? n.dg / 100 : tg;
-    if (!(r > tg)) return null;
-    let d = n.dps, pv = 0;
-    for (let i = 1; i <= 10; i++) { d *= 1 + dg; pv += d / Math.pow(1 + r, i); }
-    return pv + d * (1 + tg) / (r - tg) / Math.pow(1 + r, 10);
-  }
-  // Dividends paid, in the reporting currency and amount unit (the dividend per share is in the share price currency).
-  const dividendsPaid = n => {
-    const fx = needFx() ? n.fx : 1;
-    return isNum(n.dps) && n.dps > 0 && isNum(n.shares) && n.shares > 0 && isNum(fx) && fx > 0 ? n.dps * n.shares * shareInfo().mult / unitInfo().mult / fx : null;
-  };
+  // The maths is in src/dcf-core.js; these read the model on screen.
+  const readModel = s => DCF.readModel(state, s);
+  const evalCase = s => DCF.evalCase(state, s);
+  const { blockers, rule, signalFor, compute, weightedOf, implied, ddm, dividendsPaid } = DCF;
 
   function runChecks(c, W) {
     const n = c.n, b = c.b, res = c.res, out = [];
@@ -1291,7 +1569,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     lang = next;
     lsSet(LS_LANG, lang);
     applyStatic(); buildForm(); setState(keepV, keepS);
-    render(); renderStatus(); renderHistory(); renderAI(); saveDraftSoon();
+    render(); renderStatus(); renderHistory(); renderAI(); renderSync(); saveDraftSoon();
     const b = document.querySelector('[data-lang="' + lang + '"]'); if (b) b.focus();
   }
   function setActive(s) {
@@ -1570,14 +1848,14 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     }
     const id = 'l' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
     store.entries = [Object.assign({ id: id }, entry)].concat(store.entries);
-    if (store.mode === 'local') lsSet(LS_HIST, store.entries);
+    if (store.mode === 'local') { lsSet(LS_HIST, store.entries); syncQueue(id, 'put'); }
     renderHistory();
     return id;
   }
   async function removeEntry(id) {
     if (store.mode === 'cloud' && store.col) { await store.col.doc(id).delete(); return; }
     store.entries = store.entries.filter(e => e.id !== id);
-    if (store.mode === 'local') lsSet(LS_HIST, store.entries);
+    if (store.mode === 'local') { lsSet(LS_HIST, store.entries); syncQueue(id, 'del'); }
   }
   const findEntry = id => store.entries.find(e => e.id === id);
   function groupsMap() {
@@ -1596,6 +1874,8 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     const el = byId('store-status');
     let s = 'pending', k = 'stLoading';
     if (store.mode === 'cloud' && store.loaded) { s = 'ok'; k = 'stCloud'; }
+    else if (store.mode === 'local' && syncOn()) { s = sync.errKey ? 'local' : 'ok'; k = sync.errKey ? 'stSyncErr' : 'stSync'; }
+    else if (store.mode === 'local' && sync.avail && sync.formErr === 'syErrExpired') { s = 'local'; k = 'stSyncErr'; }
     else if (store.mode === 'local') { s = 'local'; k = 'stLocal'; }
     else if (store.mode === 'memory') { s = 'local'; k = 'stMemory'; }
     el.dataset.state = s; byId('store-text').textContent = t(k);
@@ -1627,7 +1907,9 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
       '<div class="e-nums"><span>' + esc(t('fairShort')) + ' <b>' + esc(fmtPrice(r.fair, c)) + '</b>' + (r.weighted ? ' <small>' + esc(t('weightedTag')) + '</small>' : '') + '</span>' +
       '<span>' + esc(t('priceShort')) + ' ' + esc(fmtPrice(r.price, c)) + '</span>' +
       (isNum(r.mos) ? '<span class="' + (r.mos > 0 ? 'pos' : 'neg') + '">' + esc(t('mosShort')) + ' ' + esc(fmtPct(r.mos, 1, true)) + '</span>' : '') + '</div>' +
-      '<div class="e-assume">' + esc(assume) + '</div>' + actions + '</li>';
+      '<div class="e-assume">' + esc(assume) + '</div>' +
+      (e.by === 'claude' || e.asOf ? '<div class="e-by">' + (e.by === 'claude' ? '<span class="tag-claude">' + esc(t('byClaude')) + '</span>' : '') + (e.asOf ? '<span>' + esc(t('asOfL', e.asOf)) + '</span>' : '') + '</div>' : '') +
+      (e.note ? '<p class="e-note" title="' + esc(e.note) + '">' + esc(e.note) + '</p>' : '') + actions + '</li>';
   }
 
   /* ----- fair value vs price chart for one stock's saves ----- */
@@ -1800,25 +2082,9 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
       toast(t('tNoTicker'));
       return;
     }
-    const clean = v => (isNum(v) ? v : null);
-    const all = SCN.map(evalCase), W = weightedOf(all), base = all[1];
-    const inputs = {};
-    FACT_KEYS.forEach(k => { inputs[k] = clean(base.n[k]); });
-    Object.assign(inputs, { currency: cur(), rcurrency: state.values.rcurrency || null, unit: state.values.unit, sharesUnit: state.values.sharesUnit, baseYear: baseYear(), method: method() });
-    const scenarios = {};
-    all.forEach(x => {
-      if (!x.filled) { scenarios[x.s] = null; return; }
-      const o = {}; SC_KEYS.forEach(k => { o[k] = clean(x.n[k]); }); scenarios[x.s] = o;
-    });
-    const head = W || (base.res ? { fair: base.res.fair, price: base.res.price, mos: base.res.mos, signal: base.res.signal } : null);
-    const fairOf = s => { const x = all.find(z => z.s === s); return x && x.res && x.filled ? clean(x.res.fair) : null; };
+    const snap = DCF.snapshot(state), head = snap.result;
     const now = Date.now();
-    const entry = {
-      v: 2, ticker: tk, name: String(state.values.name || '').trim().slice(0, 120), savedAtMs: now, savedAt: new Date(now).toISOString(),
-      inputs: inputs, scenarios: scenarios,
-      result: head ? { fair: clean(head.fair), price: clean(head.price), mos: clean(head.mos), signal: head.signal || null, weighted: !!W,
-        bear: fairOf('bear'), base: fairOf('base'), bull: fairOf('bull'), ddm: clean(ddm(base.n)) } : null,
-    };
+    const entry = Object.assign({ v: 2, ticker: tk, name: String(state.values.name || '').trim().slice(0, 120), savedAtMs: now, savedAt: new Date(now).toISOString() }, snap);
     saving = true;
     ['btn-save', 'mb-save'].forEach(id => { byId(id).disabled = true; });
     try {
@@ -1924,6 +2190,449 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     }
     try { await store.downloads.save({ filename: filename, data: csv }); toast(t('tExported')); }
     catch (err) { if (!err || err.code !== 'declined') toast(t('tExportFail')); }
+  }
+
+  /* ================= sync through the viewer's own Firebase project ================= */
+  // Optional, and only outside claude.ai. Saves go to users/{uid}/dcf/{id} in a Firebase project the viewer
+  // owns (the one Checkmate uses works too, with the same account). Plain REST calls, no SDK: local changes
+  // are queued and pushed; changes from other devices, and valuations Claude saves through the connector,
+  // are pulled every few seconds while the page is open. Deletes are kept as { deleted: true } so every
+  // device sees them.
+  const LS_SYNC = 'dcf-sync-v1';
+  const SYNC_EVERY = 15000;
+  const CONN_ID = 'claude';
+  // The Claude connector's code (connector/), filled in by build.mjs; '' if it wasn't built in.
+  const CONNECTOR_CODE = ["// DCF Calculator connector for Claude, version 1.0.0\n// Paste this whole file into a Cloudflare Worker (Edit code → select all → paste → Deploy).\n// It lets Claude run DCF valuations with the calculator's own maths and save them to your\n// calculator. It signs in to your own Firebase project as you and keeps no data of its own.\n// Get your personal copy from the calculator → Sync & Claude; the values in CONFIG are yours.\n// connector/src/firebase.js\nvar COLLECTION = \"dcf\";\nvar FirebaseError = class extends Error {\n  constructor(message, code, status) {\n    super(message);\n    this.code = code || \"UNKNOWN\";\n    this.status = status || 0;\n  }\n};\nfunction apis(cfg, env) {\n  const base = env && env.DCF_GOOGLE_API ? String(env.DCF_GOOGLE_API).replace(/\\/$/, \"\") : null;\n  return {\n    key: cfg.apiKey,\n    project: cfg.projectId,\n    signIn: `${base ? `${base}/identitytoolkit` : \"https://identitytoolkit.googleapis.com\"}/v1/accounts:signInWithPassword?key=${encodeURIComponent(cfg.apiKey)}`,\n    refresh: `${base ? `${base}/securetoken` : \"https://securetoken.googleapis.com\"}/v1/token?key=${encodeURIComponent(cfg.apiKey)}`,\n    firestore: `${base ? `${base}/firestore` : \"https://firestore.googleapis.com\"}/v1`\n  };\n}\nasync function readJson(res) {\n  const text2 = await res.text();\n  try {\n    return text2 ? JSON.parse(text2) : null;\n  } catch {\n    return { error: { message: text2.slice(0, 200) } };\n  }\n}\nasync function signIn(api, email, password) {\n  const res = await fetch(api.signIn, {\n    method: \"POST\",\n    headers: { \"content-type\": \"application/json\" },\n    body: JSON.stringify({ email, password, returnSecureToken: true })\n  });\n  const j = await readJson(res);\n  if (!res.ok || !j || !j.idToken) {\n    const msg = j && j.error && j.error.message || `HTTP ${res.status}`;\n    throw new FirebaseError(msg, msg.split(/[\\s:]/)[0], res.status);\n  }\n  return {\n    idToken: j.idToken,\n    refreshToken: j.refreshToken,\n    uid: j.localId,\n    email: j.email || email,\n    exp: Date.now() + (parseInt(j.expiresIn, 10) || 3600) * 1e3\n  };\n}\nasync function refresh(api, refreshToken) {\n  const res = await fetch(api.refresh, {\n    method: \"POST\",\n    headers: { \"content-type\": \"application/x-www-form-urlencoded\" },\n    body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(refreshToken)}`\n  });\n  const j = await readJson(res);\n  if (!res.ok || !j || !j.id_token) {\n    const msg = j && j.error && (j.error.message || j.error) || `HTTP ${res.status}`;\n    throw new FirebaseError(String(msg), String(msg).split(/[\\s:]/)[0], res.status);\n  }\n  return {\n    idToken: j.id_token,\n    refreshToken: j.refresh_token || refreshToken,\n    uid: j.user_id,\n    exp: Date.now() + (parseInt(j.expires_in, 10) || 3600) * 1e3\n  };\n}\nfunction signInMessage(e) {\n  const c = e && e.code || \"\";\n  if (/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND|INVALID_EMAIL/.test(c)) return \"That email or password isn’t right. Use the account you sign in to the DCF calculator’s sync with.\";\n  if (/MISSING_PASSWORD/.test(c)) return \"Enter your password.\";\n  if (/TOO_MANY_ATTEMPTS/.test(c)) return \"Too many attempts. Wait a minute, then try again.\";\n  if (/USER_DISABLED/.test(c)) return \"This account has been turned off in your Firebase project.\";\n  if (/OPERATION_NOT_ALLOWED|PASSWORD_LOGIN_DISABLED/.test(c)) return \"Email/Password sign-in is off in your Firebase project.\";\n  if (/REFERER|REFERRER/i.test(c + (e && e.message))) return \"Your Firebase API key is limited to certain websites, so the connector can’t use it. In Google Cloud console → APIs & Services → Credentials, remove the website restriction from the key (keep its API restrictions).\";\n  if (/API_KEY|API key/i.test(c + (e && e.message))) return \"The connector’s Firebase key isn’t accepted. Copy the connector code again from the calculator (Sync & Claude).\";\n  return `Firebase didn’t accept the sign-in (${e && e.message || \"unknown error\"}).`;\n}\nfunction encode(v) {\n  if (v === null || v === void 0) return { nullValue: null };\n  if (typeof v === \"boolean\") return { booleanValue: v };\n  if (typeof v === \"number\") {\n    if (!isFinite(v)) return { nullValue: null };\n    return Number.isSafeInteger(v) ? { integerValue: String(v) } : { doubleValue: v };\n  }\n  if (typeof v === \"string\") return { stringValue: v };\n  if (Array.isArray(v)) {\n    const values = v.filter((x) => x !== void 0).map(encode);\n    return { arrayValue: values.length ? { values } : {} };\n  }\n  if (typeof v === \"object\") return { mapValue: { fields: encodeFields(v) } };\n  return { nullValue: null };\n}\nfunction encodeFields(obj) {\n  const out = {};\n  for (const k of Object.keys(obj)) {\n    if (obj[k] === void 0 || typeof obj[k] === \"function\") continue;\n    out[k] = encode(obj[k]);\n  }\n  return out;\n}\nfunction decode(v) {\n  if (!v || typeof v !== \"object\") return null;\n  if (\"nullValue\" in v) return null;\n  if (\"booleanValue\" in v) return !!v.booleanValue;\n  if (\"integerValue\" in v) return Number(v.integerValue);\n  if (\"doubleValue\" in v) return Number(v.doubleValue);\n  if (\"stringValue\" in v) return v.stringValue;\n  if (\"timestampValue\" in v) return Date.parse(v.timestampValue);\n  if (\"arrayValue\" in v) return (v.arrayValue && v.arrayValue.values || []).map(decode);\n  if (\"mapValue\" in v) return decodeFields(v.mapValue && v.mapValue.fields || {});\n  if (\"referenceValue\" in v) return v.referenceValue;\n  if (\"geoPointValue\" in v) return v.geoPointValue;\n  if (\"bytesValue\" in v) return v.bytesValue;\n  return null;\n}\nfunction decodeFields(fields) {\n  const out = {};\n  for (const k of Object.keys(fields || {})) out[k] = decode(fields[k]);\n  return out;\n}\nvar UserDb = class {\n  constructor(api, uid, idToken) {\n    this.api = api;\n    this.uid = uid;\n    this.idToken = idToken;\n    this.root = `projects/${api.project}/databases/(default)/documents`;\n    this.seen = /* @__PURE__ */ new Map();\n    this.reads = 0;\n  }\n  name(id) {\n    return `${this.root}/users/${this.uid}/${COLLECTION}/${id}`;\n  }\n  async call(path, body, method = \"POST\") {\n    const res = await fetch(`${this.api.firestore}/${path}`, {\n      method,\n      headers: { authorization: `Bearer ${this.idToken}`, \"content-type\": \"application/json\" },\n      body: body ? JSON.stringify(body) : void 0\n    });\n    const j = await readJson(res);\n    const err = j && (j.error || Array.isArray(j) && j[0] && j[0].error);\n    if (!res.ok || err) {\n      const e = err || {};\n      throw new FirebaseError(e.message || `Firestore HTTP ${res.status}`, e.status || String(res.status), res.status);\n    }\n    return j;\n  }\n  take(doc) {\n    if (!doc || !doc.name) return null;\n    const id = doc.name.slice(doc.name.lastIndexOf(\"/\") + 1);\n    this.seen.set(id, doc.updateTime || null);\n    this.reads++;\n    const data = decodeFields(doc.fields);\n    delete data.srv;\n    data.id = data.id || id;\n    return data;\n  }\n  async getMany(ids) {\n    const want = [...new Set(ids.filter(Boolean))];\n    if (!want.length) return [];\n    const out = [];\n    for (let i = 0; i < want.length; i += 100) {\n      const chunk = want.slice(i, i + 100);\n      const j = await this.call(`${this.root}:batchGet`, { documents: chunk.map((id) => this.name(id)) });\n      for (const r of j || []) {\n        if (r.found) out.push(this.take(r.found));\n        else if (r.missing) this.seen.set(r.missing.slice(r.missing.lastIndexOf(\"/\") + 1), false);\n      }\n    }\n    return out;\n  }\n  async get(id) {\n    return (await this.getMany([id]))[0] || null;\n  }\n  // where: [field, op, value] or a list of them (joined with AND); none reads every document.\n  async query(where, limit = 5e3) {\n    const list = !where || !where.length ? [] : Array.isArray(where[0]) ? where : [where];\n    const filters = list.map(([field, op, value]) => ({\n      fieldFilter: { field: { fieldPath: field }, op: OPS[op] || op, value: encode(value) }\n    }));\n    const structuredQuery = { from: [{ collectionId: COLLECTION }], limit };\n    if (filters.length) structuredQuery.where = filters.length === 1 ? filters[0] : { compositeFilter: { op: \"AND\", filters } };\n    const j = await this.call(`${this.root}/users/${this.uid}:runQuery`, { structuredQuery });\n    return (j || []).filter((r) => r.document).map((r) => this.take(r.document));\n  }\n  // Saves whole items. Each write checks the document hasn't changed since it was read\n  // (or still doesn't exist), and stamps srv with the server's clock like the app does.\n  async save(items) {\n    if (!items.length) return;\n    for (let i = 0; i < items.length; i += 400) {\n      const writes = items.slice(i, i + 400).map((it) => {\n        const w = {\n          update: { name: this.name(it.id), fields: encodeFields(it) },\n          updateTransforms: [{ fieldPath: \"srv\", setToServerValue: \"REQUEST_TIME\" }]\n        };\n        const was = this.seen.get(it.id);\n        if (was) w.currentDocument = { updateTime: was };\n        else if (was === false || was === void 0) w.currentDocument = { exists: false };\n        return w;\n      });\n      await this.call(`${this.root}:commit`, { writes });\n    }\n  }\n};\nvar OPS = {\n  \"==\": \"EQUAL\",\n  \"!=\": \"NOT_EQUAL\",\n  \"<\": \"LESS_THAN\",\n  \"<=\": \"LESS_THAN_OR_EQUAL\",\n  \">\": \"GREATER_THAN\",\n  \">=\": \"GREATER_THAN_OR_EQUAL\",\n  in: \"IN\",\n  \"array-contains\": \"ARRAY_CONTAINS\"\n};\nvar isConflict = (e) => e instanceof FirebaseError && /FAILED_PRECONDITION|ABORTED|ALREADY_EXISTS|NOT_FOUND|^409$/.test(e.code);\nvar isAuthError = (e) => e instanceof FirebaseError && (e.status === 401 || /UNAUTHENTICATED/.test(e.code));\n\n// connector/src/seal.js\nvar enc = new TextEncoder();\nvar dec = new TextDecoder();\nfunction b64u(bytes) {\n  const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);\n  let s = \"\";\n  for (let i = 0; i < b.length; i += 32768) s += String.fromCharCode.apply(null, b.subarray(i, i + 32768));\n  return btoa(s).replace(/\\+/g, \"-\").replace(/\\//g, \"_\").replace(/=+$/, \"\");\n}\nfunction unb64u(str) {\n  let s = String(str).replace(/-/g, \"+\").replace(/_/g, \"/\");\n  while (s.length % 4) s += \"=\";\n  const bin = atob(s);\n  const out = new Uint8Array(bin.length);\n  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);\n  return out;\n}\nvar sha256 = async (text2) => new Uint8Array(await crypto.subtle.digest(\"SHA-256\", enc.encode(text2)));\nvar cache = null;\nasync function keys(secret) {\n  if (cache && cache.secret === secret) return cache;\n  const aes = await crypto.subtle.importKey(\"raw\", await sha256(`dcf-connector/aes/${secret}`), \"AES-GCM\", false, [\"encrypt\", \"decrypt\"]);\n  const mac2 = await crypto.subtle.importKey(\"raw\", await sha256(`dcf-connector/mac/${secret}`), { name: \"HMAC\", hash: \"SHA-256\" }, false, [\"sign\", \"verify\"]);\n  cache = { secret, aes, mac: mac2 };\n  return cache;\n}\nvar PREFIX = { access: \"dca_\", refresh: \"dcr_\", code: \"dcc_\", request: \"dcq_\" };\nasync function seal(secret, kind, payload) {\n  const { aes } = await keys(secret);\n  const iv = crypto.getRandomValues(new Uint8Array(12));\n  const body = enc.encode(JSON.stringify({ ...payload, k: kind }));\n  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: \"AES-GCM\", iv, additionalData: enc.encode(kind) }, aes, body));\n  const out = new Uint8Array(iv.length + ct.length);\n  out.set(iv);\n  out.set(ct, iv.length);\n  return PREFIX[kind] + b64u(out);\n}\nasync function unseal(secret, kind, token2) {\n  if (typeof token2 !== \"string\" || !token2.startsWith(PREFIX[kind]) || token2.length > 16e3) return null;\n  try {\n    const { aes } = await keys(secret);\n    const raw = unb64u(token2.slice(PREFIX[kind].length));\n    const plain = await crypto.subtle.decrypt({ name: \"AES-GCM\", iv: raw.subarray(0, 12), additionalData: enc.encode(kind) }, aes, raw.subarray(12));\n    const p = JSON.parse(dec.decode(plain));\n    if (p.k !== kind) return null;\n    if (p.exp && p.exp < Date.now()) return { ...p, expired: true };\n    return p;\n  } catch {\n    return null;\n  }\n}\nasync function mac(secret, text2) {\n  const { mac: key } = await keys(secret);\n  return b64u(await crypto.subtle.sign(\"HMAC\", key, enc.encode(text2)));\n}\nasync function pkceOk(verifier, challenge) {\n  if (typeof verifier !== \"string\" || !/^[A-Za-z0-9\\-._~]{43,128}$/.test(verifier)) return false;\n  return b64u(await sha256(verifier)) === challenge;\n}\nvar randomId = (bytes = 16) => b64u(crypto.getRandomValues(new Uint8Array(bytes)));\nfunction sameText(a, b) {\n  if (typeof a !== \"string\" || typeof b !== \"string\" || a.length !== b.length) return false;\n  let d = 0;\n  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);\n  return d === 0;\n}\n\n// src/dcf-core.js\nvar DCF = function() {\n  \"use strict\";\n  const UNITS = {\n    \"1e3\": { mult: 1e3, short: \"K\", word: [\"thousands\", \"千\"], label: [\"Thousands (K)\", \"千 (K)\"] },\n    \"1e6\": { mult: 1e6, short: \"M\", word: [\"millions\", \"百萬\"], label: [\"Millions (M)\", \"百萬 (M)\"] },\n    \"1e9\": { mult: 1e9, short: \"B\", word: [\"billions\", \"十億\"], label: [\"Billions (B)\", \"十億 (B)\"] }\n  };\n  const SHARE_UNITS2 = {\n    \"1\": { mult: 1, label: [\"shares\", \"股\"], word: [\"single shares\", \"股\"] },\n    \"1e3\": { mult: 1e3, label: [\"K\", \"千股\"], word: [\"thousands of shares\", \"千股\"] },\n    \"1e6\": { mult: 1e6, label: [\"M\", \"百萬股\"], word: [\"millions of shares\", \"百萬股\"] },\n    \"1e9\": { mult: 1e9, label: [\"B\", \"十億股\"], word: [\"billions of shares\", \"十億股\"] }\n  };\n  const CURRENCIES2 = [\n    [\"$\", [\"$ · US dollar\", \"$ · 美元\"]],\n    [\"A$\", [\"A$ · Australian dollar\", \"A$ · 澳幣\"]],\n    [\"NT$\", [\"NT$ · NT dollar\", \"NT$ · 新台幣\"]],\n    [\"HK$\", [\"HK$ · HK dollar\", \"HK$ · 港幣\"]],\n    [\"¥\", [\"¥ · Yen / Yuan\", \"¥ · 日圓／人民幣\"]],\n    [\"€\", [\"€ · Euro\", \"€ · 歐元\"]],\n    [\"£\", [\"£ · Pound\", \"£ · 英鎊\"]]\n  ];\n  const F2 = {\n    fcf: { kind: \"money\", en: \"TTM free cash flow\", zh: \"自由現金流（基期）\", s: [\"TTM free cash flow\", \"自由現金流\"], h: [\"Last 12 months. Negative: -120 or (120).\", \"近 12 個月。負數可輸入 -120 或 (120)。\"] },\n    revenue: { kind: \"money\", en: \"TTM revenue\", zh: \"TTM 營收\", s: [\"TTM revenue\", \"TTM 營收\"], h: [\"Needed for the Revenue × FCF margin method and the margin check.\", \"「營收 × FCF 利潤率」方法和利潤率檢查需要。\"] },\n    sbc: { kind: \"money\", en: \"Stock-based compensation\", zh: \"股票薪酬 (SBC)\", s: [\"stock-based pay\", \"股票薪酬\"], h: [\"Optional. Subtracted from FCF, because paying staff in stock dilutes shareholders.\", \"選填。會從 FCF 扣除，因為用股票發薪會稀釋股東權益。\"] },\n    g1: { kind: \"pct\", sc: true, en: \"FCF growth, years 1–5\", zh: \"未來成長率（一~五年）\", s: [\"FCF growth for years 1–5\", \"一~五年成長率\"], h: [\"Yearly growth of free cash flow.\", \"自由現金流每年的成長率。\"] },\n    rg1: { kind: \"pct\", sc: true, en: \"Revenue growth, years 1–5\", zh: \"營收成長（y1-5）\", s: [\"revenue growth for years 1–5\", \"一~五年營收成長\"], h: [\"Optional. For the margin check.\", \"選填。用於利潤率檢查。\"], hM: [\"Drives revenue in this method.\", \"此方法用它推估營收。\"] },\n    g2: { kind: \"pct\", sc: true, en: \"FCF growth, years 6–10\", zh: \"二階成長率（六~十年）\", s: [\"FCF growth for years 6–10\", \"六~十年成長率\"], h: [\"Usually lower than years 1–5.\", \"通常低於一~五年。\"], copyFrom: \"g1\" },\n    rg2: { kind: \"pct\", sc: true, en: \"Revenue growth, years 6–10\", zh: \"營收成長（y6-10）\", s: [\"revenue growth for years 6–10\", \"六~十年營收成長\"], h: [\"Optional.\", \"選填。\"], hM: [\"Usually lower than years 1–5.\", \"通常低於一~五年。\"], copyFrom: \"rg1\" },\n    tm: { kind: \"pct\", sc: true, en: \"Target FCF margin\", zh: \"目標 FCF 利潤率\", s: [\"target FCF margin\", \"目標 FCF 利潤率\"], h: [\"FCF as a % of revenue once the business settles.\", \"營運穩定後 FCF 佔營收的比例。\"] },\n    tmYear: { kind: \"int\", sc: true, en: \"Year the target is reached\", zh: \"達到目標的年份\", s: [\"target year\", \"目標年份\"], h: [\"1–10. The margin moves in a straight line until then. Blank = 5.\", \"1–10。在此之前利潤率直線變化，空白視為 5。\"], ph: \"5\" },\n    tg: { kind: \"pct\", sc: true, en: \"Terminal growth\", zh: \"永久成長率\", s: [\"terminal growth\", \"永久成長率\"], h: [\"Growth after year 10, forever. Usually 2–3%.\", \"第十年之後的永續成長率，通常 2–3%。\"] },\n    w: { kind: \"pct\", sc: true, en: \"Weight of this case\", zh: \"此情境權重\", s: [\"weight\", \"權重\"], h: [\"How likely you think this case is. Used for the weighted value.\", \"你認為此情境發生的機率，用於加權合理價。\"] },\n    r: { kind: \"pct\", en: \"Discount rate\", zh: \"期望折現率（期望收益率）\", s: [\"discount rate\", \"折現率\"], h: [\"Your required return. Discounts every year, as in the sheet.\", \"你要求的報酬率。和試算表一樣，每一年都用它折現。\"] },\n    wacc: { kind: \"pct\", en: \"WACC\", zh: \"折現率 (WACC)\", s: [\"WACC\", \"WACC\"], h: [\"Reference only.\", \"僅供參考。\"], useWacc: true },\n    cash: { kind: \"money\", en: \"Cash & investments\", zh: \"(+) 現金及其他投資\", s: [\"cash & investments\", \"現金及其他投資\"], h: [\"Blank counts as 0.\", \"空白視為 0。\"] },\n    debt: { kind: \"money\", en: \"Total debt\", zh: \"(−) 總負債\", s: [\"total debt\", \"總負債\"], h: [\"Interest-bearing debt, not all liabilities. Blank counts as 0.\", \"只填有息負債，不是全部負債。空白視為 0。\"] },\n    shares: { kind: \"shares\", en: \"Shares outstanding\", zh: \"流通股數\", s: [\"shares outstanding\", \"流通股數\"], h: [\"Pick the unit your source uses.\", \"選擇和資料來源相同的單位。\"] },\n    price: { kind: \"price\", en: \"Current share price\", zh: \"股票當前價格\", s: [\"current share price\", \"股票當前價格\"], h: [\"Needed for margin of safety.\", \"計算安全邊際需要。\"] },\n    dps: { kind: \"price\", en: \"Dividend per share, yearly\", zh: \"每股股利（年）\", s: [\"dividend per share\", \"每股股利\"], h: [\"Optional. Last 12 months, or the quarterly dividend × 4.\", \"選填。近 12 個月，或季配息 × 4。\"] },\n    dg: { kind: \"pct\", en: \"Dividend growth, years 1–10\", zh: \"股利成長率（1–10 年）\", s: [\"dividend growth\", \"股利成長率\"], h: [\"Optional. Blank = terminal growth.\", \"選填。空白視為永久成長率。\"] },\n    past5: { kind: \"pct\", en: \"Past 5-year growth\", zh: \"過去五年成長率\", s: [\"past 5-year growth\", \"過去五年成長率\"], h: [\"Compared with your growth inputs.\", \"用來對照你的成長假設。\"] },\n    ath: { kind: \"pct\", en: \"Peak FCF margin (all-time high)\", zh: \"歷史最高 FCF 利潤率\", s: [\"peak FCF margin\", \"歷史最高 FCF 利潤率\"], h: [\"Flags projected margins above it.\", \"預測利潤率超過時會提醒。\"] },\n    buyAt: { kind: \"pct\", en: \"Buy when margin of safety ≥\", zh: \"安全邊際 ≥ 此值時買進\", s: [\"buy level\", \"買進門檻\"], h: [\"Default 25%.\", \"預設 25%。\"], ph: \"25\" },\n    sellAt: { kind: \"pct\", en: \"Sell when margin of safety ≤\", zh: \"安全邊際 ≤ 此值時賣出\", s: [\"sell level\", \"賣出門檻\"], h: [\"Default −10%. Set both to 0 to match the sheet.\", \"預設 −10%。兩者都設 0 就和試算表一樣。\"], ph: \"-10\" },\n    fx: { kind: \"rate\", en: \"Exchange rate\", zh: \"匯率\", s: [\"exchange rate\", \"匯率\"], h: [\"\", \"\"] }\n  };\n  const FKEYS = Object.keys(F2);\n  const SC_KEYS2 = FKEYS.filter((k) => F2[k].sc);\n  const FACT_KEYS2 = FKEYS.filter((k) => !F2[k].sc);\n  const SCN2 = [\"bear\", \"base\", \"bull\"];\n  const DEF_W2 = { bear: 25, base: 50, bull: 25 };\n  const REQ = { fcf: [\"fcf\", \"g1\", \"g2\", \"r\", \"tg\", \"shares\"], margin: [\"fcf\", \"revenue\", \"rg1\", \"rg2\", \"tm\", \"r\", \"tg\", \"shares\"] };\n  const DEFAULTS = { ticker: \"\", name: \"\", currency: \"$\", rcurrency: \"\", unit: \"1e6\", sharesUnit: \"1e6\", baseYear: String((/* @__PURE__ */ new Date()).getFullYear()), method: \"fcf\", buyAt: \"25\", sellAt: \"-10\" };\n  const isNum2 = (v) => typeof v === \"number\" && Number.isFinite(v);\n  const pick = (a, b) => a != null ? a : b;\n  const normTicker = (s) => String(s || \"\").trim().toUpperCase().slice(0, 24);\n  function emptySc() {\n    return { bear: { w: \"25\" }, base: { w: \"50\" }, bull: { w: \"25\" } };\n  }\n  const SUF = { k: 1e3, m: 1e6, b: 1e9, t: 1e12, \"萬\": 1e4, \"万\": 1e4, \"億\": 1e8, \"亿\": 1e8 };\n  function toAscii(s) {\n    return s.replace(/[０-９．－％（），＋]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 65248));\n  }\n  function parseRaw(raw, kind) {\n    let s = toAscii(String(raw == null ? \"\" : raw)).trim();\n    if (!s) return { empty: true };\n    s = s.replace(/−/g, \"-\").replace(/[\\s,_]/g, \"\").replace(/^([-+]?)(?:US|NT|HK|RMB|CN|AU|A)?[$¥€£]/i, \"$1\");\n    let neg = false;\n    const paren = s.match(/^\\((.*)\\)$/);\n    if (paren) {\n      neg = true;\n      s = paren[1];\n    }\n    let pct2 = false;\n    if (s.endsWith(\"%\")) {\n      pct2 = true;\n      s = s.slice(0, -1);\n    }\n    const m = s.match(/^([-+]?)(\\d+(?:\\.\\d*)?|\\.\\d+)([kmbt萬万億亿]?)$/i);\n    if (!m) return { empty: false, bad: true };\n    let v = parseFloat(m[2]);\n    if (m[1] === \"-\") v = -v;\n    if (neg) v = -v;\n    const suf = m[3] ? SUF[m[3].toLowerCase()] : null;\n    if (suf && (kind === \"pct\" || kind === \"int\" || kind === \"rate\")) return { empty: false, bad: true };\n    if (kind === \"rate\" && !(v > 0)) return { empty: false, bad: true };\n    if (pct2 && kind !== \"pct\") return { empty: false, bad: true };\n    if (kind === \"int\" && (v !== Math.round(v) || v < 1 || v > 10)) return { empty: false, bad: true };\n    return { empty: false, bad: false, v, suf, text: m[2] };\n  }\n  function fmtInput(v, kind) {\n    if (kind === \"pct\") return String(+v.toFixed(4));\n    if (kind === \"int\") return String(Math.round(v));\n    if (kind === \"rate\") return String(+v.toFixed(6));\n    if (kind === \"price\") return v.toLocaleString(\"en-US\", { minimumFractionDigits: 2, maximumFractionDigits: 4 });\n    return v.toLocaleString(\"en-US\", { maximumFractionDigits: 4 });\n  }\n  const unitOf = (st) => UNITS[st.values.unit] || UNITS[\"1e6\"];\n  const sharesOf = (st) => SHARE_UNITS2[st.values.sharesUnit] || SHARE_UNITS2[\"1e6\"];\n  const curOf = (st) => st.values.currency || \"$\";\n  const rcurOf = (st) => st.values.rcurrency || curOf(st);\n  const needFxOf = (st) => !!st.values.rcurrency && st.values.rcurrency !== curOf(st);\n  const methodOf = (st) => st.values.method === \"margin\" ? \"margin\" : \"fcf\";\n  const scFilledOf = (st, s) => SC_KEYS2.some((k) => k !== \"w\" && String((st.sc[s] || {})[k] || \"\").trim() !== \"\");\n  function baseYearOf(st) {\n    const y = parseInt(toAscii(String(st.values.baseYear || \"\")), 10);\n    return y > 1900 && y < 3e3 ? y : (/* @__PURE__ */ new Date()).getFullYear();\n  }\n  function baseMult(st, kind) {\n    return kind === \"money\" ? unitOf(st).mult : kind === \"shares\" ? sharesOf(st).mult : 1;\n  }\n  const rawOf = (st, k, s) => F2[k].sc ? (st.sc[s || st.active || \"base\"] || {})[k] : st.values[k];\n  function num(st, k, s) {\n    const p = parseRaw(rawOf(st, k, s), F2[k].kind);\n    if (p.empty) return null;\n    if (p.bad) return NaN;\n    return p.suf ? p.v * p.suf / baseMult(st, F2[k].kind) : p.v;\n  }\n  function readModel(st, s) {\n    const n = { method: methodOf(st), s, unitMult: unitOf(st).mult, shareMult: sharesOf(st).mult, needFx: needFxOf(st), baseYear: baseYearOf(st) };\n    FKEYS.forEach((k) => {\n      n[k] = num(st, k, s);\n    });\n    return n;\n  }\n  function blockers(n) {\n    const req = REQ[n.method];\n    const keys2 = FACT_KEYS2.concat(SC_KEYS2);\n    const bad = keys2.filter((k) => Number.isNaN(n[k]));\n    const missing = req.filter((k) => n[k] == null);\n    if (n.needFx && n.fx == null) missing.push(\"fx\");\n    const rate = isNum2(n.r) && isNum2(n.tg) && n.r <= n.tg;\n    const shares = isNum2(n.shares) && n.shares <= 0;\n    const rev0 = n.method === \"margin\" && isNum2(n.revenue) && n.revenue <= 0;\n    const blocking = bad.filter((k) => req.indexOf(k) >= 0 || k === \"tmYear\" && n.method === \"margin\" || k === \"sbc\" || k === \"fx\" && n.needFx);\n    return { bad, missing, rate, shares, rev0, ok: !blocking.length && !missing.length && !rate && !shares && !rev0 };\n  }\n  function rule(n) {\n    const buy = isNum2(n.buyAt) ? n.buyAt / 100 : 0.25, sell = isNum2(n.sellAt) ? n.sellAt / 100 : -0.1;\n    return buy < sell ? { buy: 0, sell: 0, bad: true } : { buy, sell, bad: false };\n  }\n  function signalFor(mos, n) {\n    if (mos == null) return null;\n    const q = rule(n);\n    if (mos >= q.buy && mos > q.sell) return \"BUY\";\n    if (mos <= q.sell) return \"SELL\";\n    return \"HOLD\";\n  }\n  function compute(n, o) {\n    o = o || {};\n    const r = pick(o.r, n.r) / 100, tg = pick(o.tg, n.tg) / 100;\n    if (!(r > tg)) return null;\n    const margin = n.method === \"margin\";\n    const sbc = isNum2(n.sbc) ? n.sbc : 0;\n    const f0 = n.fcf - sbc;\n    const rev0 = isNum2(n.revenue) && n.revenue > 0 ? n.revenue : null;\n    if (margin && rev0 == null) return null;\n    const m0 = rev0 ? f0 / rev0 : null;\n    const g1 = pick(o.g1, n.g1) / 100, g2 = n.g2 / 100;\n    const rg1 = isNum2(n.rg1) ? n.rg1 / 100 : null, rg2 = isNum2(n.rg2) ? n.rg2 / 100 : null;\n    const tm = pick(o.tm, n.tm) / 100, N = isNum2(n.tmYear) ? n.tmYear : 5;\n    const by = isNum2(n.baseYear) ? n.baseYear : (/* @__PURE__ */ new Date()).getFullYear();\n    let f = f0, rev = rev0, sumPV = 0;\n    const years = [];\n    for (let i = 1; i <= 10; i++) {\n      const rg = i <= 5 ? rg1 : rg2, prev = f;\n      rev = rev != null && rg != null ? rev * (1 + rg) : null;\n      if (margin) f = rev * (i < N ? m0 + (tm - m0) * i / N : tm);\n      else f = f * (1 + (i <= 5 ? g1 : g2));\n      const g = margin ? prev > 0 ? f / prev - 1 : null : i <= 5 ? g1 : g2;\n      const df = Math.pow(1 + r, -i), pv = f * df;\n      sumPV += pv;\n      years.push({ t: i, year: by + i, g, rev, fcf: f, margin: rev ? f / rev : null, df, pv });\n    }\n    const last = years[9];\n    const tv = last.fcf * (1 + tg) / (r - tg), pvTV = tv * last.df;\n    const cash = isNum2(n.cash) ? n.cash : 0, debt = isNum2(n.debt) ? n.debt : 0;\n    const ev = sumPV + pvTV, equity = ev + cash - debt;\n    const fx = o.fx != null ? o.fx : n.needFx ? n.fx : 1;\n    const fair = equity * pick(o.unitMult, isNum2(n.unitMult) ? n.unitMult : 1e6) * fx / (n.shares * pick(o.shareMult, isNum2(n.shareMult) ? n.shareMult : 1e6));\n    const price = isNum2(n.price) && n.price > 0 ? n.price : null;\n    const mos = price ? (fair - price) / price : null;\n    return {\n      fx,\n      years,\n      tv,\n      pvTV,\n      sumPV,\n      ev,\n      cash,\n      debt,\n      equity,\n      fair,\n      price,\n      mos,\n      signal: signalFor(mos, n),\n      f0,\n      rev0,\n      m0\n    };\n  }\n  function evalCase(st, s) {\n    const n = readModel(st, s), b = blockers(n);\n    return { s, n, b, res: b.ok ? compute(n) : null, filled: s === \"base\" || scFilledOf(st, s) };\n  }\n  function weightedOf(all) {\n    const done = all.filter((x) => x.res && x.filled);\n    if (done.length < 2) return null;\n    let ws = done.map((x) => isNum2(x.n.w) ? Math.max(0, x.n.w) : DEF_W2[x.s]);\n    let sum = ws.reduce((a, b) => a + b, 0), equal = false;\n    if (sum <= 0) {\n      ws = ws.map(() => 1);\n      sum = ws.length;\n      equal = true;\n    }\n    const fair = done.reduce((acc, x, i) => acc + x.res.fair * ws[i], 0) / sum;\n    const price = done[0].res.price, mos = price ? (fair - price) / price : null;\n    const fairs = done.map((x) => x.res.fair);\n    return {\n      fair,\n      price,\n      mos,\n      signal: signalFor(mos, done[0].n),\n      count: done.length,\n      min: Math.min.apply(null, fairs),\n      max: Math.max.apply(null, fairs),\n      equal,\n      share: done.reduce((m, x, i) => {\n        m[x.s] = ws[i] / sum;\n        return m;\n      }, {})\n    };\n  }\n  function implied(n) {\n    if (!isNum2(n.price) || n.price <= 0) return null;\n    const key = n.method === \"margin\" ? \"tm\" : \"g1\";\n    if (key === \"g1\" && !(n.fcf - (isNum2(n.sbc) ? n.sbc : 0) > 0)) return null;\n    const lo = key === \"tm\" ? -30 : -90, hi = key === \"tm\" ? 80 : 200;\n    const f = (x) => {\n      const o = {};\n      o[key] = x;\n      const r = compute(n, o);\n      return r ? r.fair - n.price : NaN;\n    };\n    let a = lo, b = hi;\n    const fa = f(a), fb = f(b);\n    if (!isNum2(fa) || !isNum2(fb)) return null;\n    if (fa > 0) return { key, below: true, value: lo };\n    if (fb < 0) return { key, above: true, value: hi };\n    for (let i = 0; i < 80; i++) {\n      const m = (a + b) / 2;\n      if (f(m) > 0) b = m;\n      else a = m;\n    }\n    return { key, value: (a + b) / 2 };\n  }\n  function ddm(n) {\n    if (!isNum2(n.dps) || n.dps <= 0 || !isNum2(n.r) || !isNum2(n.tg)) return null;\n    const r = n.r / 100, tg = n.tg / 100, dg = isNum2(n.dg) ? n.dg / 100 : tg;\n    if (!(r > tg)) return null;\n    let d = n.dps, pv = 0;\n    for (let i = 1; i <= 10; i++) {\n      d *= 1 + dg;\n      pv += d / Math.pow(1 + r, i);\n    }\n    return pv + d * (1 + tg) / (r - tg) / Math.pow(1 + r, 10);\n  }\n  const dividendsPaid = (n) => {\n    const fx = n.needFx ? n.fx : 1;\n    return isNum2(n.dps) && n.dps > 0 && isNum2(n.shares) && n.shares > 0 && isNum2(fx) && fx > 0 ? n.dps * n.shares * n.shareMult / n.unitMult / fx : null;\n  };\n  function snapshot(st) {\n    const clean = (v) => isNum2(v) ? v : null;\n    const all = SCN2.map((s) => evalCase(st, s)), W = weightedOf(all), base = all[1];\n    const inputs = {};\n    FACT_KEYS2.forEach((k) => {\n      inputs[k] = clean(base.n[k]);\n    });\n    Object.assign(inputs, { currency: curOf(st), rcurrency: st.values.rcurrency || null, unit: st.values.unit, sharesUnit: st.values.sharesUnit, baseYear: baseYearOf(st), method: methodOf(st) });\n    const scenarios = {};\n    all.forEach((x) => {\n      if (!x.filled) {\n        scenarios[x.s] = null;\n        return;\n      }\n      const o = {};\n      SC_KEYS2.forEach((k) => {\n        o[k] = clean(x.n[k]);\n      });\n      scenarios[x.s] = o;\n    });\n    const head = W || (base.res ? { fair: base.res.fair, price: base.res.price, mos: base.res.mos, signal: base.res.signal } : null);\n    const fairOf = (s) => {\n      const x = all.find((z) => z.s === s);\n      return x && x.res && x.filled ? clean(x.res.fair) : null;\n    };\n    return {\n      inputs,\n      scenarios,\n      result: head ? {\n        fair: clean(head.fair),\n        price: clean(head.price),\n        mos: clean(head.mos),\n        signal: head.signal || null,\n        weighted: !!W,\n        bear: fairOf(\"bear\"),\n        base: fairOf(\"base\"),\n        bull: fairOf(\"bull\"),\n        ddm: clean(ddm(base.n))\n      } : null\n    };\n  }\n  function fromSnapshot(e) {\n    if (!e || !e.scenarios) return null;\n    const i = e.inputs || {};\n    const values = {\n      ticker: e.ticker,\n      name: e.name || \"\",\n      currency: i.currency || \"$\",\n      rcurrency: i.rcurrency || \"\",\n      method: i.method === \"margin\" ? \"margin\" : \"fcf\",\n      unit: UNITS[i.unit] ? i.unit : \"1e6\",\n      sharesUnit: SHARE_UNITS2[i.sharesUnit] ? i.sharesUnit : \"1e6\",\n      baseYear: String(i.baseYear || DEFAULTS.baseYear)\n    };\n    FACT_KEYS2.forEach((k) => {\n      values[k] = isNum2(i[k]) ? fmtInput(i[k], F2[k].kind) : k === \"buyAt\" || k === \"sellAt\" ? DEFAULTS[k] : \"\";\n    });\n    const sc = emptySc();\n    SCN2.forEach((s) => {\n      const o = e.scenarios[s];\n      if (o) SC_KEYS2.forEach((k) => {\n        sc[s][k] = isNum2(o[k]) ? fmtInput(o[k], F2[k].kind) : k === \"w\" ? String(DEF_W2[s]) : \"\";\n      });\n    });\n    return { values, sc, active: \"base\" };\n  }\n  return {\n    UNITS,\n    SHARE_UNITS: SHARE_UNITS2,\n    CURRENCIES: CURRENCIES2,\n    F: F2,\n    FKEYS,\n    SC_KEYS: SC_KEYS2,\n    FACT_KEYS: FACT_KEYS2,\n    SCN: SCN2,\n    DEF_W: DEF_W2,\n    REQ,\n    DEFAULTS,\n    isNum: isNum2,\n    pick,\n    normTicker,\n    emptySc,\n    toAscii,\n    parseRaw,\n    fmtInput,\n    unitOf,\n    sharesOf,\n    curOf,\n    rcurOf,\n    needFxOf,\n    methodOf,\n    scFilledOf,\n    baseYearOf,\n    rawOf,\n    num,\n    readModel,\n    blockers,\n    rule,\n    signalFor,\n    compute,\n    evalCase,\n    weightedOf,\n    implied,\n    ddm,\n    dividendsPaid,\n    snapshot,\n    fromSnapshot\n  };\n}();\nvar dcf_core_default = DCF;\n\n// connector/src/tools.js\nvar CONNECTOR_ID = \"claude\";\nvar MAX_DELETE = 50;\nvar ToolError = class extends Error {\n};\nvar AccessError = class extends Error {\n};\nvar { F, SCN, SC_KEYS, FACT_KEYS, DEF_W, isNum } = dcf_core_default;\nvar AMOUNT_UNITS = { thousands: \"1e3\", millions: \"1e6\", billions: \"1e9\" };\nvar SHARE_UNITS = { single: \"1\", thousands: \"1e3\", millions: \"1e6\", billions: \"1e9\" };\nvar UNIT_WORD = { \"1e3\": \"thousands\", \"1e6\": \"millions\", \"1e9\": \"billions\" };\nvar SHARE_WORD = { \"1\": \"single\", \"1e3\": \"thousands\", \"1e6\": \"millions\", \"1e9\": \"billions\" };\nvar CURRENCIES = dcf_core_default.CURRENCIES.map((c) => c[0]);\nvar CURRENCY_ALIASES = {\n  USD: \"$\",\n  US$: \"$\",\n  AUD: \"A$\",\n  AU$: \"A$\",\n  TWD: \"NT$\",\n  NTD: \"NT$\",\n  HKD: \"HK$\",\n  JPY: \"¥\",\n  CNY: \"¥\",\n  RMB: \"¥\",\n  EUR: \"€\",\n  GBP: \"£\"\n};\nvar FACT_IN = [\"fcf\", \"revenue\", \"sbc\", \"cash\", \"debt\", \"shares\", \"price\", \"dps\", \"dg\", \"wacc\", \"past5\", \"ath\"];\nvar CASE_IN = [\"g1\", \"g2\", \"rg1\", \"rg2\", \"tm\", \"tmYear\", \"tg\", \"w\"];\nvar r2 = (v, d = 2) => isNum(v) ? +v.toFixed(d) : null;\nvar pct = (f, d = 1) => isNum(f) ? +(f * 100).toFixed(d) : null;\nvar clone = (o) => JSON.parse(JSON.stringify(o));\nvar label = (k) => F[k].s[0];\nfunction text(v, name, { max = 200 } = {}) {\n  if (v == null || v === \"\") return null;\n  if (typeof v !== \"string\" && typeof v !== \"number\") throw new ToolError(`“${name}” must be text.`);\n  const s = String(v).trim();\n  if (s.length > max) throw new ToolError(`“${name}” is too long (${s.length} characters; the limit is ${max}).`);\n  return s;\n}\nfunction currencyIn(v, name) {\n  const s = text(v, name, { max: 8 });\n  if (s == null) return null;\n  const up = s.toUpperCase();\n  if (CURRENCIES.includes(s)) return s;\n  if (CURRENCY_ALIASES[up]) return CURRENCY_ALIASES[up];\n  const sym = CURRENCIES.find((c) => c.toUpperCase() === up);\n  if (sym) return sym;\n  throw new ToolError(`${name} “${s}” isn’t one the calculator has. Use one of ${CURRENCIES.join(\" \")} (or USD, AUD, TWD, HKD, JPY, CNY, EUR, GBP).`);\n}\nfunction boxText(k, v) {\n  if (v === null) return \"\";\n  const kind = F[k].kind;\n  if (typeof v === \"number\") {\n    if (!Number.isFinite(v)) throw new ToolError(`“${k}” must be a finite number.`);\n    if (kind === \"int\" && (v !== Math.round(v) || v < 1 || v > 10)) throw new ToolError(`“${k}” (${label(k)}) must be a whole number from 1 to 10.`);\n    if (kind === \"rate\" && !(v > 0)) throw new ToolError(\"The exchange rate must be above 0.\");\n    return dcf_core_default.fmtInput(v, kind);\n  }\n  if (typeof v === \"string\") {\n    const p = dcf_core_default.parseRaw(v, kind);\n    if (p.empty) return \"\";\n    if (p.bad) throw new ToolError(`Couldn’t read “${v}” for “${k}” (${label(k)}). Pass a plain number${kind === \"pct\" ? \": 12 means 12%\" : \"\"}.`);\n    return v.trim();\n  }\n  throw new ToolError(`“${k}” must be a number (or null to leave it blank).`);\n}\nvar isObj = (v) => v && typeof v === \"object\" && !Array.isArray(v);\nfunction modelFrom(args, start) {\n  const st = start ? clone(start) : { values: { ...dcf_core_default.DEFAULTS }, sc: dcf_core_default.emptySc(), active: \"base\" };\n  st.active = \"base\";\n  const v = st.values;\n  const tk = dcf_core_default.normTicker(text(args.ticker, \"ticker\", { max: 24 }) || v.ticker);\n  if (!tk) throw new ToolError('“ticker” is required, such as \"NVDA\", \"WTC.AX\" or \"2330.TW\".');\n  v.ticker = tk;\n  const company = text(args.company, \"company\", { max: 120 });\n  if (company) v.name = company;\n  const s = args.settings;\n  if (s != null && !isObj(s)) throw new ToolError(\"“settings” must be an object.\");\n  if (s) {\n    const pc = currencyIn(s.priceCurrency, \"priceCurrency\");\n    if (pc) v.currency = pc;\n    if (\"reportCurrency\" in s) {\n      const rc = currencyIn(s.reportCurrency, \"reportCurrency\");\n      v.rcurrency = rc && rc !== (v.currency || \"$\") ? rc : \"\";\n    } else if (pc && v.rcurrency === pc) v.rcurrency = \"\";\n    if (s.fxRate !== void 0) v.fx = s.fxRate == null ? \"\" : boxText(\"fx\", s.fxRate);\n    if (s.amountUnit != null) {\n      if (!AMOUNT_UNITS[s.amountUnit]) throw new ToolError('amountUnit must be \"thousands\", \"millions\" or \"billions\".');\n      v.unit = AMOUNT_UNITS[s.amountUnit];\n    }\n    if (s.sharesUnit != null) {\n      if (!SHARE_UNITS[s.sharesUnit]) throw new ToolError('sharesUnit must be \"single\", \"thousands\", \"millions\" or \"billions\".');\n      v.sharesUnit = SHARE_UNITS[s.sharesUnit];\n    }\n    if (s.baseYear != null) {\n      const y = Number(s.baseYear);\n      if (!(Number.isInteger(y) && y > 1900 && y < 3e3)) throw new ToolError(\"baseYear must be a year such as 2026.\");\n      v.baseYear = String(y);\n    }\n  }\n  if (dcf_core_default.needFxOf(st) && !String(v.fx || \"\").trim()) {\n    throw new ToolError(`The figures are in ${v.rcurrency} but the share price is in ${v.currency}, so settings.fxRate is needed: how many ${v.currency} one ${v.rcurrency} buys.`);\n  }\n  if (args.method != null) {\n    if (args.method !== \"fcf\" && args.method !== \"margin\") throw new ToolError('method must be \"fcf\" or \"margin\".');\n    v.method = args.method;\n  }\n  if (args.facts != null && !isObj(args.facts)) throw new ToolError(\"“facts” must be an object.\");\n  const facts = args.facts || {};\n  for (const k of Object.keys(facts)) {\n    if (!FACT_IN.includes(k)) throw new ToolError(`Unknown fact “${k}”. Facts are ${FACT_IN.join(\", \")}.`);\n    if (facts[k] !== void 0) v[k] = boxText(k, facts[k]);\n  }\n  for (const k of [\"r\", \"buyAt\", \"sellAt\"]) if (args[k] !== void 0) v[k] = boxText(k, args[k]);\n  const r = dcf_core_default.num(st, \"r\");\n  if (isNum(r) && r > 0 && r < 1) throw new ToolError(`The discount rate ${r} looks like a fraction. Percentages are plain numbers: pass 10 for 10%.`);\n  if (args.cases != null && !isObj(args.cases)) throw new ToolError(\"“cases” must be an object with bear, base and bull.\");\n  const cases = args.cases || {};\n  for (const name of Object.keys(cases)) {\n    if (!SCN.includes(name)) throw new ToolError(`Unknown case “${name}”. Cases are bear, base and bull.`);\n    const c = cases[name];\n    if (c === null) {\n      if (name === \"base\") throw new ToolError(\"The base case can’t be removed.\");\n      st.sc[name] = { w: String(DEF_W[name]) };\n      continue;\n    }\n    if (!isObj(c)) throw new ToolError(`cases.${name} must be an object such as {\"g1\": 12, \"g2\": 8, \"tg\": 3, \"w\": 50}.`);\n    const box = start ? { ...st.sc[name] || {} } : { w: String(DEF_W[name]) };\n    for (const k of Object.keys(c)) {\n      if (!CASE_IN.includes(k)) throw new ToolError(`Unknown key “${k}” in cases.${name}. Case keys are ${CASE_IN.join(\", \")}.`);\n      if (c[k] !== void 0) box[k] = boxText(k, c[k]);\n    }\n    if (!String(box.w || \"\").trim()) box.w = String(DEF_W[name]);\n    st.sc[name] = box;\n  }\n  return st;\n}\nfunction blockersText(x) {\n  const b = x.b, out = [];\n  if (b.missing.length) out.push(`missing ${b.missing.map((k) => `${k} (${label(k)})`).join(\", \")}`);\n  if (b.bad.length) out.push(`can’t read ${b.bad.join(\", \")}`);\n  if (b.rate) out.push(\"the discount rate r must be above terminal growth tg\");\n  if (b.shares) out.push(\"shares must be above 0\");\n  if (b.rev0) out.push(\"the margin method needs revenue above 0\");\n  return out.join(\"; \") || \"not enough inputs\";\n}\nfunction caseInputs(x) {\n  const o = {};\n  CASE_IN.forEach((k) => {\n    o[k] = isNum(x.n[k]) ? x.n[k] : null;\n  });\n  return o;\n}\nfunction checksFor(st, all, W) {\n  const out = [];\n  const base = all[1], n = base.n, res = base.res;\n  const unitW = UNIT_WORD[st.values.unit] || \"millions\", shareW = SHARE_WORD[st.values.sharesUnit] || \"millions\";\n  all.forEach((x) => {\n    if (x.filled && !x.res) out.push(`The ${x.s} case can’t be valued yet: ${blockersText(x)}.`);\n  });\n  if (dcf_core_default.rule(n).bad) out.push(\"The buy level is below the sell level, so the calculator ignores both and shows HOLD around 0%.\");\n  const f0 = isNum(n.fcf) ? n.fcf - (isNum(n.sbc) ? n.sbc : 0) : null;\n  if (n.method === \"fcf\" && isNum(f0) && f0 <= 0) out.push('Free cash flow (after stock-based pay) is zero or negative, so growing it gives a negative value. Use method \"margin\" with revenue and a target FCF margin instead.');\n  if (isNum(n.tg) && n.tg > 4) out.push(`Terminal growth of ${n.tg}% is high for growth that lasts forever; 2–3% is usual.`);\n  if (isNum(n.r) && n.r > 0 && n.r < 6) out.push(`A discount rate of ${n.r}% is low; 8–12% is common for stocks.`);\n  all.forEach((x) => {\n    if (!x.filled) return;\n    const m = x.n;\n    if (m.method === \"fcf\" && isNum(m.g1) && m.g1 > 40) out.push(`The ${x.s} case grows free cash flow ${m.g1}% a year for five years, which few companies manage.`);\n    if (m.method === \"fcf\" && isNum(m.g1) && isNum(m.g2) && m.g2 > m.g1) out.push(`In the ${x.s} case, growth in years 6–10 is above years 1–5; it usually slows.`);\n    const small = [\"g1\", \"g2\", \"rg1\", \"rg2\", \"tm\", \"tg\"].filter((k) => isNum(m[k]) && m[k] !== 0 && Math.abs(m[k]) < 0.5);\n    if (small.length >= 2) out.push(`In the ${x.s} case, ${small.join(\", \")} are below 0.5. Percentages are plain numbers (12 means 12%); check these aren’t fractions.`);\n  });\n  if (isNum(n.past5) && isNum(n.g1) && n.method === \"fcf\" && n.g1 > n.past5 + 10) out.push(`Base-case growth of ${n.g1}% is well above the past five years’ ${n.past5}%.`);\n  const paid = dcf_core_default.dividendsPaid(n);\n  if (paid && isNum(f0) && paid > f0) out.push(\"Dividends paid are larger than free cash flow, so the dividend may not be covered.\");\n  if (W && W.equal) out.push(\"Every weight is 0, so the cases are weighted equally.\");\n  if (res) {\n    if (res.ev > 0 && res.pvTV / res.ev > 0.8) out.push(`The terminal value is ${Math.round(res.pvTV / res.ev * 100)}% of enterprise value, so the result leans heavily on growth after year 10.`);\n    if (isNum(n.ath)) {\n      const hit = res.years.find((y) => y.margin != null && y.margin * 100 > n.ath + 1e-9);\n      if (hit) out.push(`The projected FCF margin reaches ${pct(hit.margin)}% in ${hit.year}, above the company’s peak of ${n.ath}%.`);\n    }\n    if (res.price && res.fair > 0) {\n      const ratio = res.fair / res.price;\n      if (ratio > 8 || ratio < 0.125) out.push(`The fair value is ${ratio > 1 ? `${r2(ratio, 1)} times` : `${r2(ratio * 100, 1)}% of`} the share price. Check the units: amounts are in ${unitW} and shares in ${shareW === \"single\" ? \"single shares\" : shareW}.`);\n    }\n    if (!isNum(n.cash) && !isNum(n.debt)) out.push(\"Cash and debt are blank, so both count as 0.\");\n    if (!res.price) out.push(\"There’s no share price, so there’s no margin of safety or signal.\");\n  }\n  return out;\n}\nfunction report(st, { detail = true } = {}) {\n  const all = SCN.map((s) => dcf_core_default.evalCase(st, s));\n  const W = dcf_core_default.weightedOf(all);\n  const base = all[1], n = base.n, res = base.res;\n  const cur = dcf_core_default.curOf(st), rcur = dcf_core_default.rcurOf(st);\n  const head = W || (res ? { fair: res.fair, price: res.price, mos: res.mos, signal: res.signal } : null);\n  const out = {\n    ticker: st.values.ticker,\n    company: st.values.name || null,\n    method: dcf_core_default.methodOf(st),\n    settings: {\n      priceCurrency: cur,\n      reportCurrency: rcur,\n      fxRate: dcf_core_default.needFxOf(st) ? n.fx : null,\n      amountUnit: UNIT_WORD[st.values.unit] || \"millions\",\n      sharesUnit: SHARE_WORD[st.values.sharesUnit] || \"millions\",\n      baseYear: dcf_core_default.baseYearOf(st)\n    },\n    fairValuePerShare: head ? r2(head.fair) : null,\n    fairValueIs: W ? `weighted across ${W.count} cases` : res ? \"base case\" : \"not available yet\",\n    sharePrice: head ? head.price : isNum(n.price) ? n.price : null,\n    marginOfSafetyPct: head ? pct(head.mos) : null,\n    signal: head ? head.signal || null : null,\n    decisionRule: (() => {\n      const q = dcf_core_default.rule(n);\n      return { buyWhenMarginOfSafetyAtLeastPct: r2(q.buy * 100), sellWhenAtOrBelowPct: r2(q.sell * 100) };\n    })(),\n    range: W ? { lowest: r2(W.min), highest: r2(W.max) } : null,\n    cases: {}\n  };\n  all.forEach((x) => {\n    if (!x.filled) {\n      out.cases[x.s] = null;\n      return;\n    }\n    if (!x.res) {\n      out.cases[x.s] = { inputs: caseInputs(x), error: `Can’t be valued yet: ${blockersText(x)}.` };\n      return;\n    }\n    const r = x.res;\n    out.cases[x.s] = {\n      inputs: caseInputs(x),\n      weightPct: W && W.share[x.s] != null ? pct(W.share[x.s]) : null,\n      fairValuePerShare: r2(r.fair),\n      marginOfSafetyPct: pct(r.mos),\n      signal: r.signal,\n      enterpriseValue: r2(r.ev, 1),\n      equityValue: r2(r.equity, 1),\n      terminalValueShareOfEvPct: r.ev > 0 ? pct(r.pvTV / r.ev, 0) : null,\n      fcfMarginYear1Pct: r.years[0].margin != null ? pct(r.years[0].margin) : null,\n      fcfMarginYear10Pct: r.years[9].margin != null ? pct(r.years[9].margin) : null\n    };\n  });\n  const imp = res ? dcf_core_default.implied(n) : null;\n  if (imp) {\n    const what = imp.key === \"tm\" ? \"target FCF margin\" : \"FCF growth in years 1–5\";\n    out.priceImplies = imp.below ? { metric: what, note: `Even with ${what} of ${imp.value}%, the base case’s fair value is above today’s price.` } : imp.above ? { metric: what, note: `Even with ${what} of ${imp.value}%, the base case’s fair value is below today’s price.` } : { metric: what, valuePct: r2(imp.value, 1), note: `Holding the base case’s other inputs, today’s price assumes ${what} of ${r2(imp.value, 1)}%${imp.key === \"tm\" ? \"\" : \" a year\"}.` };\n  }\n  const d = dcf_core_default.ddm(n);\n  if (isNum(n.dps) && n.dps > 0) {\n    const paid = dcf_core_default.dividendsPaid(n), f0 = isNum(n.fcf) ? n.fcf - (isNum(n.sbc) ? n.sbc : 0) : null;\n    out.dividends = {\n      perShare: n.dps,\n      yieldPct: isNum(n.price) && n.price > 0 ? pct(n.dps / n.price, 2) : null,\n      paidShareOfFcfPct: paid && isNum(f0) && f0 > 0 ? pct(paid / f0, 0) : null,\n      dividendModelValuePerShare: r2(d)\n    };\n  }\n  if (detail && res) {\n    out.baseCase = {\n      projection: res.years.map((y) => ({\n        year: y.year,\n        growthPct: pct(y.g),\n        revenue: r2(y.rev, 1),\n        fcf: r2(y.fcf, 1),\n        fcfMarginPct: y.margin != null ? pct(y.margin) : null,\n        presentValue: r2(y.pv, 1)\n      })),\n      bridge: {\n        startingFcfAfterStockPay: r2(res.f0, 1),\n        sumOfPresentValues: r2(res.sumPV, 1),\n        terminalValue: r2(res.tv, 1),\n        presentValueOfTerminalValue: r2(res.pvTV, 1),\n        enterpriseValue: r2(res.ev, 1),\n        plusCash: r2(res.cash, 1),\n        minusDebt: r2(res.debt, 1),\n        equityValue: r2(res.equity, 1),\n        shares: n.shares,\n        fxRate: res.fx !== 1 ? res.fx : null,\n        fairValuePerShare: r2(res.fair),\n        amountsIn: `${rcur} ${UNIT_WORD[st.values.unit] || \"millions\"}`\n      },\n      sensitivity: (() => {\n        const rs = [-2, -1, 0, 1, 2].map((x) => n.r + x), ts = [-1, -0.5, 0, 0.5, 1].map((x) => n.tg + x);\n        return {\n          rowsDiscountRatePct: rs,\n          columnsTerminalGrowthPct: ts,\n          fairValues: rs.map((r) => ts.map((g) => {\n            const x = r > 0 ? dcf_core_default.compute(n, { r, tg: g }) : null;\n            return x ? r2(x.fair) : null;\n          }))\n        };\n      })()\n    };\n  }\n  out.checks = checksFor(st, all, W);\n  return out;\n}\nvar isValuation = (d) => d && d.type === \"valuation\" && !d.deleted && d.ticker;\nvar savedAtOf = (d) => isNum(d.savedAtMs) ? new Date(d.savedAtMs).toISOString() : d.savedAt || null;\nfunction brief(d) {\n  const r = d.result || {}, i = d.inputs || {};\n  return {\n    id: d.id,\n    savedAt: savedAtOf(d),\n    savedBy: d.by === \"claude\" ? \"Claude\" : \"the user\",\n    fairValuePerShare: isNum(r.fair) ? r2(r.fair) : null,\n    sharePrice: isNum(r.price) ? r.price : null,\n    marginOfSafetyPct: isNum(r.mos) ? pct(r.mos) : null,\n    signal: r.signal || null,\n    currency: i.currency || \"$\",\n    ...d.asOf ? { figuresAsOf: d.asOf } : {}\n  };\n}\nfunction byTicker(docs) {\n  const m = /* @__PURE__ */ new Map();\n  docs.filter(isValuation).forEach((d) => {\n    const tk = String(d.ticker);\n    if (!m.has(tk)) m.set(tk, []);\n    m.get(tk).push(d);\n  });\n  m.forEach((a) => a.sort((x, y) => (y.savedAtMs || 0) - (x.savedAtMs || 0)));\n  return m;\n}\nfunction findTicker(groups, raw) {\n  const tk = dcf_core_default.normTicker(raw);\n  if (groups.has(tk)) return groups.get(tk);\n  const near = [...groups.keys()].filter((k) => k.split(\".\")[0] === tk.split(\".\")[0]);\n  return near.length === 1 ? groups.get(near[0]) : null;\n}\nfunction newId() {\n  const b = crypto.getRandomValues(new Uint8Array(10));\n  return \"c\" + Array.from(b, (x) => x.toString(36).padStart(2, \"0\")).join(\"\").slice(0, 19);\n}\nfunction startingPoint(args, docs) {\n  const from = args.startFrom == null ? \"blank\" : String(args.startFrom);\n  if (from === \"blank\") return { start: null, from: null };\n  const groups = byTicker(docs);\n  let d;\n  if (from === \"latest\") {\n    if (!args.ticker) throw new ToolError('startFrom \"latest\" needs the ticker.');\n    const arr = findTicker(groups, args.ticker);\n    if (!arr) throw new ToolError(`There’s no saved valuation for ${dcf_core_default.normTicker(args.ticker)} yet. Leave out startFrom to start from a blank model.`);\n    d = arr[0];\n  } else {\n    d = docs.find((x) => x.id === from && isValuation(x));\n    if (!d) throw new ToolError(`No saved valuation has the id “${from}”. Use \"latest\", \"blank\" or an id from get-overview or get-valuation.`);\n  }\n  const st = dcf_core_default.fromSnapshot(d);\n  if (!st) throw new ToolError(\"That save is from an older version of the calculator and can’t be used as a starting point. Start from a blank model instead.\");\n  return { start: st, from: d };\n}\nvar MODEL_GUIDE = `How the calculator values a stock: a two-stage DCF. Ten projected years of free cash flow plus a terminal value (FCF in year 10 × (1 + tg) ÷ (r − tg)), all discounted at the discount rate r. Enterprise value = the sum of the present values; equity = enterprise value + cash − debt; fair value per share = equity ÷ shares (times fxRate when the figures are in another currency than the share price).\n- method \"fcf\": free cash flow grows at g1 a year in years 1–5 and g2 in years 6–10.\n- method \"margin\": revenue grows at rg1 (years 1–5) and rg2 (years 6–10); the FCF margin moves in a straight line from today's (fcf ÷ revenue) to the target tm by year tmYear (1–10) and stays there. Use it when today's margin is far from normal.\n- sbc (stock-based compensation), if given, is subtracted from fcf before projecting.\n- Three cases, bear, base and bull, each with g1, g2, rg1, rg2, tm, tmYear, tg and w (weight in percent; 25/50/25 by default). The headline fair value blends the cases by weight. Only base is required.\n- Signal: BUY when the margin of safety is at least buyAt % (default 25), SELL at or below sellAt % (default −10), HOLD in between.\nUnits: percentages are plain numbers (12 means 12%). fcf, revenue, sbc, cash and debt are trailing-12-month figures in the report currency and the amount unit (millions unless you set settings.amountUnit). shares are diluted shares in the shares unit (millions by default). price and dps are in the share price currency. debt is interest-bearing debt (plus preferred stock), not all liabilities.`;\nvar MONEY = (what) => ({ type: [\"number\", \"null\"], description: what });\nvar MODEL_PROPS = {\n  ticker: { type: \"string\", description: 'The ticker as the calculator lists it: \"NVDA\", \"WTC.AX\" (ASX), \"2330.TW\" (Taiwan), \"0700.HK\".' },\n  company: { type: \"string\", description: \"Company name.\" },\n  startFrom: { type: \"string\", description: '\"blank\" (default) starts a new model. \"latest\" starts from the newest saved valuation of this ticker and changes only what you pass. Or the id of a saved valuation.' },\n  method: { type: \"string\", enum: [\"fcf\", \"margin\"], description: '\"fcf\" grows free cash flow; \"margin\" grows revenue toward a target FCF margin.' },\n  settings: {\n    type: \"object\",\n    description: \"Currencies and units. Leave out to keep $ and millions.\",\n    properties: {\n      priceCurrency: { type: \"string\", description: `Share price currency: ${CURRENCIES.join(\" \")} (ISO codes such as USD or AUD work too).` },\n      reportCurrency: { type: \"string\", description: \"Currency of the financial statements, if different from the share price’s.\" },\n      fxRate: { type: [\"number\", \"null\"], description: \"Share-price-currency units per one report-currency unit. Needed when the currencies differ.\" },\n      amountUnit: { type: \"string\", enum: [\"thousands\", \"millions\", \"billions\"], description: \"Unit for fcf, revenue, sbc, cash and debt.\" },\n      sharesUnit: { type: \"string\", enum: [\"single\", \"thousands\", \"millions\", \"billions\"], description: \"Unit for shares.\" },\n      baseYear: { type: \"integer\", description: \"The year of the starting figures; projections start the year after.\" }\n    }\n  },\n  facts: {\n    type: \"object\",\n    description: \"The company’s figures. null clears one.\",\n    properties: {\n      fcf: MONEY(\"Trailing-12-month free cash flow = operating cash flow − capital expenditure.\"),\n      revenue: MONEY('Trailing-12-month revenue (needed for method \"margin\").'),\n      sbc: MONEY(\"Trailing-12-month stock-based compensation (optional; subtracted from fcf).\"),\n      cash: MONEY(\"Cash and short-term investments.\"),\n      debt: MONEY(\"Interest-bearing debt plus preferred stock.\"),\n      shares: MONEY(\"Diluted shares outstanding, in the shares unit.\"),\n      price: MONEY(\"Current share price.\"),\n      dps: MONEY(\"Dividends per share over the last 12 months (optional).\"),\n      dg: MONEY(\"Dividend growth % a year for years 1–10 (optional; default terminal growth).\"),\n      wacc: MONEY(\"WACC % (reference only).\"),\n      past5: MONEY(\"Revenue or FCF growth % a year over the past five years (reference).\"),\n      ath: MONEY(\"Highest FCF margin % the company has reached (flags projections above it).\")\n    }\n  },\n  r: { type: \"number\", description: \"Discount rate % (the yearly return wanted). 8–12 is common.\" },\n  buyAt: { type: \"number\", description: \"BUY when the margin of safety is at least this %. Default 25.\" },\n  sellAt: { type: \"number\", description: \"SELL when the margin of safety is at or below this %. Default −10.\" },\n  cases: {\n    type: \"object\",\n    description: \"bear, base and bull. Each takes g1, g2, rg1, rg2, tm, tmYear, tg and w as percent numbers (tmYear is a year number 1–10). null removes bear or bull.\",\n    properties: Object.fromEntries(SCN.map((s) => [s, {\n      type: [\"object\", \"null\"],\n      properties: {\n        g1: { type: \"number\", description: \"FCF growth %, years 1–5 (method fcf)\" },\n        g2: { type: \"number\", description: \"FCF growth %, years 6–10 (method fcf)\" },\n        rg1: { type: \"number\", description: \"Revenue growth %, years 1–5\" },\n        rg2: { type: \"number\", description: \"Revenue growth %, years 6–10\" },\n        tm: { type: \"number\", description: \"Target FCF margin % (method margin)\" },\n        tmYear: { type: \"integer\", description: \"Year 1–10 the target margin is reached (default 5)\" },\n        tg: { type: \"number\", description: \"Terminal growth % after year 10, usually 2–3\" },\n        w: { type: \"number\", description: `Weight % (default ${DEF_W[s]})` }\n      }\n    }]))\n  }\n};\nvar TOOLS = [\n  {\n    name: \"get-overview\",\n    title: \"Saved stocks\",\n    description: \"Start here. Lists the stocks saved in the user’s DCF calculator, newest first, with each one’s latest fair value, share price, margin of safety and BUY/HOLD/SELL signal, plus today’s date.\",\n    readOnly: true,\n    inputSchema: { type: \"object\", properties: {} },\n    async run(docs) {\n      const groups = byTicker(docs);\n      const stocks = [...groups.entries()].sort((a, b) => (b[1][0].savedAtMs || 0) - (a[1][0].savedAtMs || 0)).map(([tk, arr]) => ({ ticker: tk, company: arr[0].name || null, saves: arr.length, latest: brief(arr[0]) }));\n      const last = docs.filter(isValuation).sort((a, b) => (b.savedAtMs || 0) - (a.savedAtMs || 0))[0];\n      const li = last && last.inputs || {};\n      return {\n        today: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10),\n        savedStocks: stocks.length,\n        stocks: stocks.slice(0, 200),\n        usualDecisionRule: { buyAtPct: isNum(li.buyAt) ? li.buyAt : 25, sellAtPct: isNum(li.sellAt) ? li.sellAt : -10 },\n        tip: \"run-dcf tries a valuation without saving; save-valuation keeps it in the calculator. get-valuation shows a saved one in full.\"\n      };\n    }\n  },\n  {\n    name: \"get-valuation\",\n    title: \"A saved valuation\",\n    description: \"Shows a saved valuation in full: the figures and assumptions, the result recalculated with the calculator’s maths (cases, 10-year projection, sensitivity, checks) and the list of earlier saves of the same stock. Give a ticker for its newest save, or an id.\",\n    readOnly: true,\n    inputSchema: {\n      type: \"object\",\n      properties: {\n        ticker: { type: \"string\", description: 'Ticker, such as \"VST\" or \"WTC.AX\".' },\n        id: { type: \"string\", description: \"The id of one save (from get-overview or the history list).\" }\n      }\n    },\n    async run(docs, args) {\n      const groups = byTicker(docs);\n      let d, arr;\n      if (args.id) {\n        d = docs.find((x) => x.id === String(args.id) && isValuation(x));\n        if (!d) throw new ToolError(`No saved valuation has the id “${args.id}”.`);\n        arr = groups.get(String(d.ticker)) || [d];\n      } else {\n        if (!args.ticker) throw new ToolError(\"Give a ticker or an id.\");\n        arr = findTicker(groups, args.ticker);\n        if (!arr) throw new ToolError(`There’s no saved valuation for ${dcf_core_default.normTicker(args.ticker)}. Saved tickers: ${[...groups.keys()].slice(0, 40).join(\", \") || \"none yet\"}.`);\n        d = arr[0];\n      }\n      const st = dcf_core_default.fromSnapshot(d);\n      const out = { ...brief(d), ticker: d.ticker, company: d.name || null };\n      if (d.note) out.note = d.note;\n      if (st) out.valuation = report(st);\n      else out.stored = { inputs: d.inputs || null, result: d.result || null, olderFormat: true };\n      out.history = arr.map(brief);\n      return out;\n    }\n  },\n  {\n    name: \"run-dcf\",\n    title: \"Run a DCF valuation\",\n    description: `Values a stock with the calculator’s own DCF maths and returns the fair value per share for each case, the weighted fair value, margin of safety, BUY/HOLD/SELL signal, the growth today’s price implies, the base case’s 10-year projection and sensitivity table, and checks on the inputs. Nothing is saved. Look up the company’s latest reported figures first; then try your inputs here and adjust anything implausible before saving with save-valuation.\n\n${MODEL_GUIDE}`,\n    readOnly: true,\n    inputSchema: { type: \"object\", properties: MODEL_PROPS, required: [\"ticker\"] },\n    async run(docs, args) {\n      const { start, from } = startingPoint(args, docs);\n      const st = modelFrom(args, start);\n      const out = report(st);\n      if (from) out.startedFrom = brief(from);\n      return out;\n    }\n  },\n  {\n    name: \"save-valuation\",\n    title: \"Save a valuation\",\n    description: `Saves a valuation to the user’s DCF calculator as a new dated snapshot, the same as pressing Save snapshot in the app. It appears there within seconds, marked as saved by Claude; earlier saves stay in the stock’s history. Takes the same inputs as run-dcf, plus asOf (the period of the figures) and an optional note. The base case must be complete.\n\n${MODEL_GUIDE}`,\n    inputSchema: {\n      type: \"object\",\n      properties: {\n        ...MODEL_PROPS,\n        asOf: { type: \"string\", description: 'The period the figures come from, such as \"Q3 2026 (quarter to 30 Sep 2026)\".' },\n        note: { type: \"string\", description: \"A short note for the user: sources, the reasoning behind the cases, what to check. Up to 1,500 characters.\" }\n      },\n      required: [\"ticker\"]\n    },\n    async run(docs, args, ctx) {\n      const { start, from } = startingPoint(args, docs);\n      const st = modelFrom(args, start);\n      const base = dcf_core_default.evalCase(st, \"base\");\n      if (!base.res) throw new ToolError(`Nothing was saved: the base case can’t be valued yet (${blockersText(base)}). Fix it and try again.`);\n      const now = Date.now();\n      const entry = {\n        id: newId(),\n        type: \"valuation\",\n        v: 2,\n        ticker: st.values.ticker,\n        name: String(st.values.name || \"\").trim().slice(0, 120),\n        savedAtMs: now,\n        savedAt: new Date(now).toISOString(),\n        ...dcf_core_default.snapshot(st),\n        by: \"claude\",\n        updatedAt: now\n      };\n      const asOf = text(args.asOf, \"asOf\", { max: 120 });\n      const note = text(args.note, \"note\", { max: 1500 });\n      if (asOf) entry.asOf = asOf;\n      if (note) entry.note = note;\n      await ctx.db.save([entry]);\n      const out = report(st, { detail: false });\n      out.saved = { id: entry.id, savedAt: entry.savedAt, message: `Saved to the DCF calculator. It appears under ${entry.ticker} in the Saved stocks list within a few seconds.` };\n      if (from) out.startedFrom = brief(from);\n      return out;\n    }\n  },\n  {\n    name: \"delete-valuations\",\n    title: \"Delete saved valuations\",\n    description: \"Deletes saved valuations by id (from get-overview or get-valuation’s history). They disappear from the calculator on every device. Always ask the user first.\",\n    destructive: true,\n    inputSchema: {\n      type: \"object\",\n      properties: { ids: { type: \"array\", items: { type: \"string\" }, description: `Ids of the saves to delete (up to ${MAX_DELETE}).` } },\n      required: [\"ids\"]\n    },\n    async run(docs, args, ctx) {\n      const ids = Array.isArray(args.ids) ? args.ids.map(String) : args.ids != null ? [String(args.ids)] : [];\n      if (!ids.length) throw new ToolError(\"Give the ids to delete.\");\n      if (ids.length > MAX_DELETE) throw new ToolError(`Delete up to ${MAX_DELETE} at a time.`);\n      const now = Date.now();\n      const found = docs.filter((d) => ids.includes(d.id) && isValuation(d));\n      await ctx.db.save(found.map((d) => ({ ...d, deleted: true, updatedAt: Math.max(now, (d.updatedAt || 0) + 1) })));\n      return {\n        deleted: found.map((d) => ({ id: d.id, ticker: d.ticker, savedAt: savedAtOf(d) })),\n        notFound: ids.filter((id) => !found.some((d) => d.id === id))\n      };\n    }\n  }\n];\nvar toolList = () => TOOLS.map((t) => ({\n  name: t.name,\n  title: t.title,\n  description: t.description,\n  inputSchema: t.inputSchema,\n  annotations: { title: t.title, readOnlyHint: !!t.readOnly, destructiveHint: !!t.destructive, idempotentHint: !!t.readOnly, openWorldHint: false }\n}));\nfunction findTool(name) {\n  return TOOLS.find((t) => t.name === name) || null;\n}\nasync function callTool(tool, args, session) {\n  for (let attempt = 0; ; attempt++) {\n    const db = session.db();\n    let docs;\n    try {\n      docs = await db.query([]);\n    } catch (e) {\n      if (isAuthError(e)) throw new AccessError(\"sign-in expired\");\n      throw e;\n    }\n    const conn = docs.find((d) => d.id === CONNECTOR_ID && d.type === \"connector\" && !d.deleted);\n    if (!conn || conn.gen !== session.gen) throw new AccessError(\"Claude’s access was turned off in the DCF calculator.\");\n    try {\n      return await tool.run(docs, { ...args }, { db, conn });\n    } catch (e) {\n      if (isConflict(e) && attempt < 2) continue;\n      throw e;\n    }\n  }\n}\nvar SERVER_INSTRUCTIONS = `DCF Calculator is the user's own stock valuation app: a two-stage discounted cash flow model with bear, base and bull cases. Valuations you save appear in the app on the user's devices within seconds.\n- Call get-overview first to see which stocks the user has saved.\n- To value a stock, look up its latest reported figures first (search the web if you can, prefer the company's own filings and releases, and note the period you used). Then call run-dcf to try your inputs, adjust anything implausible, and call save-valuation when the user wants it kept or asked you to build a model.\n- Percentages are plain numbers: 12 means 12%. Amounts are in the report currency and amount unit (millions unless set), shares in the shares unit, the price and dividend in the share price currency.\n- To update a saved stock (a new price or new results), pass startFrom \"latest\" and only what changes. Each save is a new dated snapshot; earlier ones stay in the history.\n- Ask before deleting anything. A valuation is only as good as its assumptions and isn't financial advice; say so when you give a verdict.`;\n\n// connector/src/pages.js\nfunction iconSvg(size = 34) {\n  return `<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\" width=\"${size}\" height=\"${size}\" aria-hidden=\"true\"><rect width=\"64\" height=\"64\" rx=\"14\" fill=\"#1B3FA6\"/><rect x=\"13\" y=\"36\" width=\"8\" height=\"15\" rx=\"2\" fill=\"#fff\" opacity=\".7\"/><rect x=\"28\" y=\"27\" width=\"8\" height=\"24\" rx=\"2\" fill=\"#fff\" opacity=\".85\"/><rect x=\"43\" y=\"16\" width=\"8\" height=\"35\" rx=\"2\" fill=\"#fff\"/><\/svg>`;\n}\nvar esc = (s) => String(s ?? \"\").replace(/[&<>\"']/g, (c) => ({ \"&\": \"&amp;\", \"<\": \"&lt;\", \">\": \"&gt;\", '\"': \"&quot;\", \"'\": \"&#39;\" })[c]);\nfunction langOf(request) {\n  const al = (request.headers.get(\"accept-language\") || \"\").toLowerCase();\n  const first = al.split(\",\").map((x) => x.trim().split(\";\")[0]).find((x) => /^(zh|en)/.test(x)) || \"\";\n  return /^zh-(tw|hk|mo|hant)/.test(first) || first === \"zh-hant\" ? \"zh\" : \"en\";\n}\nvar T = {\n  en: {\n    title: \"Connect Claude to your DCF calculator\",\n    asks: \"Claude is asking to use your DCF calculator. Once you allow it, Claude can:\",\n    can1: \"See the stocks and valuations you’ve saved\",\n    can2: \"Run valuations with the calculator’s own maths, and save or delete valuations for you\",\n    back: (host) => `After you allow, you’ll go back to <b>${esc(host)}<\/b>.`,\n    local: \"This sign-in was started by an app on this computer (such as Claude Code). Only continue if you started it.\",\n    email: \"Email\",\n    password: \"Password\",\n    allow: \"Sign in and allow\",\n    cancel: \"Cancel\",\n    note: (p) => `Use the email and password you use for the calculator’s sync. They go only to your own Firebase project (<code>${esc(p)}<\/code>). Claude never sees your password.`,\n    expired: \"This sign-in page has expired. Go back to Claude and choose Connect again.\",\n    badRedirect: \"This link didn’t come from Claude, so the connector won’t sign anyone in through it.\",\n    notSetUp: \"This connector has no settings yet. In the DCF calculator, open Sync & Claude, copy the connector code again and paste it into this Worker.\",\n    noConn: \"Claude isn’t turned on for this account yet. In the DCF calculator, open Sync & Claude and follow the steps under Claude, then come back and try again.\",\n    runningTitle: \"Your DCF calculator connector is running\",\n    runningBody: \"Add this address to Claude as a custom connector:\",\n    runningSteps: \"In Claude, open Customize → Connectors → Add → Add custom connector, name it “DCF Calculator”, paste the address and choose Add. Then choose Connect and sign in with the account you use for the calculator’s sync.\",\n    project: \"Firebase project\",\n    version: \"Connector version\",\n    copy: \"Copy\",\n    copied: \"Copied\"\n  },\n  zh: {\n    title: \"將 Claude 連接到你的 DCF 計算機\",\n    asks: \"Claude 要求使用你的 DCF 計算機。允許後，Claude 可以：\",\n    can1: \"查看你儲存的股票和估值\",\n    can2: \"用計算機本身的公式估值，並為你儲存或刪除估值\",\n    back: (host) => `允許後，你會返回 <b>${esc(host)}<\/b>。`,\n    local: \"這次登入是由這部電腦上的應用程式（例如 Claude Code）發起的。只有在是你自己發起時才繼續。\",\n    email: \"電郵\",\n    password: \"密碼\",\n    allow: \"登入並允許\",\n    cancel: \"取消\",\n    note: (p) => `請使用你在計算機「同步」所用的電郵和密碼。它們只會傳送到你自己的 Firebase 專案（<code>${esc(p)}<\/code>），Claude 不會看到你的密碼。`,\n    expired: \"這個登入頁面已過期。請返回 Claude，再按一次「連接」。\",\n    badRedirect: \"這個連結不是來自 Claude，所以連接器不會經它登入任何人。\",\n    notSetUp: \"這個連接器還沒有設定。請在 DCF 計算機打開「同步與 Claude」，再次複製連接器程式碼並貼到這個 Worker。\",\n    noConn: \"這個帳戶還沒有開啟 Claude。請在 DCF 計算機打開「同步與 Claude」，按 Claude 部分的步驟完成，然後回來再試。\",\n    runningTitle: \"你的 DCF 計算機連接器正在運作\",\n    runningBody: \"把這個網址加到 Claude 作為自訂連接器：\",\n    runningSteps: \"在 Claude 打開 Customize → Connectors → Add → Add custom connector，名稱填「DCF Calculator」，貼上網址並按 Add。然後按 Connect，用你在計算機「同步」所用的帳戶登入。\",\n    project: \"Firebase 專案\",\n    version: \"連接器版本\",\n    copy: \"複製\",\n    copied: \"已複製\"\n  }\n};\nvar words = (lang) => T[lang] || T.en;\nvar STYLE = `\n:root{color-scheme:light dark;--bg:#f4f6f3;--card:#fff;--ink:#1c1f1d;--ink2:#5b625e;--line:#dfe4e0;--accent:#1B3FA6;--accent-ink:#fff;--warn:#9a5b00;--warn-bg:#fff5e0;--err:#b3261e;--err-bg:#fdecea}\n@media (prefers-color-scheme:dark){:root{--bg:#121513;--card:#1b1f1c;--ink:#e8ece9;--ink2:#a3aca6;--line:#2c332e;--accent:#A3B8FF;--accent-ink:#0D1410;--warn:#f0b65a;--warn-bg:#2b2213;--err:#ff8a80;--err-bg:#2c1614}}\n*{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,\"Segoe UI\",Roboto,\"Noto Sans TC\",\"Microsoft JhengHei\",sans-serif;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px}\n.card{width:100%;max-width:440px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px}\n.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;margin-bottom:18px}.brand svg{width:34px;height:34px}\nh1{font-size:21px;line-height:1.3;margin:0 0 10px}p{margin:0 0 12px;color:var(--ink2)}ul{margin:0 0 14px;padding-left:20px}li{margin:4px 0}\nlabel{display:block;font-weight:600;font-size:13.5px;margin:14px 0 6px}input{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}input:focus{outline:2px solid var(--accent);outline-offset:1px}\n.row{display:flex;gap:10px;margin-top:20px}button{font:inherit;font-weight:600;border-radius:10px;padding:10px 16px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);flex:1}\n.note{font-size:13px;margin-top:16px}.warn{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:10px 12px;font-size:13.5px;margin:0 0 12px}.err{background:var(--err-bg);color:var(--err);border-radius:10px;padding:10px 12px;font-size:14px;margin:12px 0 0}\ncode{font-size:12.5px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 5px;word-break:break-all}\n.copy{display:flex;gap:8px;margin:6px 0 14px}.copy input{font-family:ui-monospace,Consolas,monospace;font-size:13px}\ndl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;color:var(--ink2);margin:14px 0 0}dt{font-weight:600}dd{margin:0}`;\nfunction shell(lang, title, body) {\n  return `<!doctype html><html lang=\"${lang === \"zh\" ? \"zh-Hant\" : \"en\"}\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta name=\"robots\" content=\"noindex\"><title>${esc(title)}<\/title><link rel=\"icon\" href=\"data:image/svg+xml,${encodeURIComponent(iconSvg(64))}\"><style>${STYLE}<\/style><\/head><body><main class=\"card\"><div class=\"brand\">${iconSvg(34)}<span>DCF Calculator<\/span><\/div>${body}<\/main><\/body><\/html>`;\n}\nfunction consentPage({ lang, req, host, loopback, projectId, email = \"\", error = \"\" }) {\n  const w = words(lang);\n  return shell(\n    lang,\n    w.title,\n    `<h1>${esc(w.title)}<\/h1>\n<p>${esc(w.asks)}<\/p>\n<ul><li>${esc(w.can1)}<\/li><li>${esc(w.can2)}<\/li><\/ul>\n${loopback ? `<p class=\"warn\">${esc(w.local)}<\/p>` : \"\"}\n<p>${w.back(host)}<\/p>\n<form method=\"post\" action=\"/authorize\" autocomplete=\"on\">\n<input type=\"hidden\" name=\"req\" value=\"${esc(req)}\">\n<label for=\"email\">${esc(w.email)}<\/label><input id=\"email\" name=\"email\" type=\"email\" autocomplete=\"username\" required value=\"${esc(email)}\" ${email ? \"\" : \"autofocus\"}>\n<label for=\"password\">${esc(w.password)}<\/label><input id=\"password\" name=\"password\" type=\"password\" autocomplete=\"current-password\" required ${email ? \"autofocus\" : \"\"}>\n${error ? `<p class=\"err\" role=\"alert\">${esc(error)}<\/p>` : \"\"}\n<div class=\"row\"><button class=\"primary\" type=\"submit\" name=\"action\" value=\"allow\">${esc(w.allow)}<\/button><button type=\"submit\" name=\"action\" value=\"cancel\" formnovalidate>${esc(w.cancel)}<\/button><\/div>\n<\/form>\n<p class=\"note\">${w.note(projectId)}<\/p>`\n  );\n}\nfunction messagePage({ lang, title, text: text2 }) {\n  return shell(lang, title, `<h1>${esc(title)}<\/h1><p>${esc(text2)}<\/p>`);\n}\nfunction homePage({ lang, mcpUrl, projectId, version, ready: ready2 }) {\n  const w = words(lang);\n  if (!ready2) return messagePage({ lang, title: \"DCF Calculator\", text: w.notSetUp });\n  return shell(\n    lang,\n    w.runningTitle,\n    `<h1>${esc(w.runningTitle)}<\/h1>\n<p>${esc(w.runningBody)}<\/p>\n<div class=\"copy\"><input id=\"u\" readonly value=\"${esc(mcpUrl)}\" onfocus=\"this.select()\"><button type=\"button\" onclick=\"navigator.clipboard.writeText(document.getElementById('u').value).then(()=>{this.textContent='${esc(w.copied)}'})\">${esc(w.copy)}<\/button><\/div>\n<p>${esc(w.runningSteps)}<\/p>\n<dl><dt>${esc(w.project)}<\/dt><dd><code>${esc(projectId)}<\/code><\/dd><dt>${esc(w.version)}<\/dt><dd>${esc(version)}<\/dd><\/dl>`\n  );\n}\n\n// connector/src/worker.js\nvar CONFIG = /*DCF_CONFIG*/{\"apiKey\":\"\",\"projectId\":\"\",\"secret\":\"\"}/*END_DCF_CONFIG*/;\nvar VERSION = \"1.0.0\";\nvar PROTOCOLS = [\"2025-11-25\", \"2025-06-18\", \"2025-03-26\", \"2024-11-05\"];\nvar CODE_LIFE = 5 * 60 * 1e3;\nvar PAGE_LIFE = 30 * 60 * 1e3;\nvar SCOPE = \"dcf\";\nvar ready = () => !!(CONFIG.apiKey && CONFIG.projectId && CONFIG.secret && CONFIG.secret.length >= 16);\nvar CORS = {\n  \"access-control-allow-origin\": \"*\",\n  \"access-control-allow-methods\": \"GET, POST, DELETE, OPTIONS\",\n  \"access-control-allow-headers\": \"authorization, content-type, mcp-protocol-version, mcp-session-id, last-event-id\",\n  \"access-control-expose-headers\": \"www-authenticate, mcp-session-id\",\n  \"access-control-max-age\": \"86400\"\n};\nfunction json(body, status = 200, headers = {}) {\n  return new Response(JSON.stringify(body), { status, headers: { \"content-type\": \"application/json\", \"cache-control\": \"no-store\", ...CORS, ...headers } });\n}\nfunction html(body, status = 200) {\n  return new Response(body, {\n    status,\n    headers: {\n      \"content-type\": \"text/html; charset=utf-8\",\n      \"cache-control\": \"no-store\",\n      \"x-frame-options\": \"DENY\",\n      \"content-security-policy\": \"default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'\",\n      \"referrer-policy\": \"no-referrer\",\n      \"x-content-type-options\": \"nosniff\"\n    }\n  });\n}\nvar oauthError = (error, description, status = 400, headers = {}) => json({ error, error_description: description }, status, headers);\nfunction redirectTo(uri, params) {\n  const u = new URL(uri);\n  for (const [k, v] of Object.entries(params)) if (v != null && v !== \"\") u.searchParams.set(k, v);\n  return new Response(null, { status: 302, headers: { location: u.toString(), \"cache-control\": \"no-store\", \"referrer-policy\": \"no-referrer\" } });\n}\nfunction redirectKind(uri) {\n  let u;\n  try {\n    u = new URL(uri);\n  } catch {\n    return null;\n  }\n  if (u.hash || u.username || u.password) return null;\n  if (u.protocol === \"https:\" && (u.hostname === \"claude.ai\" || u.hostname === \"claude.com\") && u.pathname === \"/api/mcp/auth_callback\") return \"claude\";\n  if (u.protocol === \"http:\" && [\"localhost\", \"127.0.0.1\", \"[::1]\"].includes(u.hostname)) return \"loopback\";\n  return null;\n}\nfunction resourceMeta(origin, path) {\n  return {\n    resource: resourceUrl(origin, path),\n    authorization_servers: [origin],\n    scopes_supported: [SCOPE],\n    bearer_methods_supported: [\"header\"],\n    resource_name: \"DCF Calculator\",\n    resource_documentation: `${origin}/`\n  };\n}\nfunction serverMeta(origin) {\n  return {\n    issuer: origin,\n    authorization_endpoint: `${origin}/authorize`,\n    token_endpoint: `${origin}/token`,\n    registration_endpoint: `${origin}/register`,\n    revocation_endpoint: `${origin}/revoke`,\n    response_types_supported: [\"code\"],\n    response_modes_supported: [\"query\"],\n    grant_types_supported: [\"authorization_code\", \"refresh_token\"],\n    code_challenge_methods_supported: [\"S256\"],\n    token_endpoint_auth_methods_supported: [\"none\", \"client_secret_post\", \"client_secret_basic\"],\n    revocation_endpoint_auth_methods_supported: [\"none\", \"client_secret_post\", \"client_secret_basic\"],\n    scopes_supported: [SCOPE, \"offline_access\"],\n    client_id_metadata_document_supported: true,\n    service_documentation: `${origin}/`\n  };\n}\nvar resourceUrl = (origin, path) => path === \"/\" ? origin : `${origin}/mcp`;\nvar unauthorized = (origin, path, error, description) => json(\n  { error: error || \"unauthorized\", error_description: description || \"Sign in to your DCF calculator to use this connector.\" },\n  401,\n  {\n    \"www-authenticate\": `Bearer ${error ? `error=\"${error}\", error_description=\"${description || \"\"}\", ` : \"\"}resource_metadata=\"${origin}/.well-known/oauth-protected-resource${path === \"/\" ? \"\" : \"/mcp\"}\", scope=\"${SCOPE}\"`\n  }\n);\nasync function register(request) {\n  let body;\n  try {\n    body = await request.json();\n  } catch {\n    return oauthError(\"invalid_client_metadata\", \"Send the client metadata as JSON.\");\n  }\n  const uris = Array.isArray(body && body.redirect_uris) ? body.redirect_uris : [];\n  if (!uris.length || uris.some((u) => typeof u !== \"string\" || !redirectKind(u))) {\n    return oauthError(\"invalid_redirect_uri\", \"Only Claude (https://claude.ai/api/mcp/auth_callback) and apps on this computer (http://localhost) can connect.\");\n  }\n  const method = [\"client_secret_post\", \"client_secret_basic\"].includes(body.token_endpoint_auth_method) ? body.token_endpoint_auth_method : \"none\";\n  const clientId = `dcf_${randomId(12)}`;\n  const out = {\n    client_id: clientId,\n    client_id_issued_at: Math.floor(Date.now() / 1e3),\n    client_name: typeof body.client_name === \"string\" ? body.client_name.slice(0, 100) : \"Claude\",\n    redirect_uris: uris,\n    grant_types: [\"authorization_code\", \"refresh_token\"],\n    response_types: [\"code\"],\n    token_endpoint_auth_method: method,\n    scope: SCOPE\n  };\n  if (method !== \"none\") {\n    out.client_secret = await mac(CONFIG.secret, `client:${clientId}`);\n    out.client_secret_expires_at = 0;\n  }\n  return json(out, 201);\n}\nasync function authorizeStart(request, url) {\n  const lang = langOf(request);\n  const w = words(lang);\n  const q = url.searchParams;\n  const ru = q.get(\"redirect_uri\") || \"\";\n  const kind = redirectKind(ru);\n  if (!kind) return html(messagePage({ lang, title: w.title, text: w.badRedirect }), 400);\n  if (q.get(\"response_type\") !== \"code\") return redirectTo(ru, { error: \"unsupported_response_type\", state: q.get(\"state\") });\n  if (!q.get(\"code_challenge\") || q.get(\"code_challenge_method\") !== \"S256\") {\n    return redirectTo(ru, { error: \"invalid_request\", error_description: \"PKCE with S256 is required.\", state: q.get(\"state\") });\n  }\n  if (!q.get(\"client_id\")) return redirectTo(ru, { error: \"invalid_request\", error_description: \"client_id is missing.\", state: q.get(\"state\") });\n  const req = await seal(CONFIG.secret, \"request\", {\n    cid: q.get(\"client_id\"),\n    ru,\n    cc: q.get(\"code_challenge\"),\n    st: q.get(\"state\") || \"\",\n    exp: Date.now() + PAGE_LIFE\n  });\n  return html(consentPage({ lang, req, host: new URL(ru).host, loopback: kind === \"loopback\", projectId: CONFIG.projectId }));\n}\nasync function authorizeFinish(request, env) {\n  const lang = langOf(request);\n  const w = words(lang);\n  const form = await request.formData();\n  const r = await unseal(CONFIG.secret, \"request\", String(form.get(\"req\") || \"\"));\n  if (!r || r.expired || !redirectKind(r.ru)) return html(messagePage({ lang, title: w.title, text: w.expired }), 400);\n  const page = (error, email2) => html(consentPage({ lang, req: String(form.get(\"req\")), host: new URL(r.ru).host, loopback: redirectKind(r.ru) === \"loopback\", projectId: CONFIG.projectId, email: email2, error }), 400);\n  if (form.get(\"action\") === \"cancel\") return redirectTo(r.ru, { error: \"access_denied\", error_description: \"You chose Cancel.\", state: r.st });\n  const email = String(form.get(\"email\") || \"\").trim();\n  const password = String(form.get(\"password\") || \"\");\n  if (!email || !password) return page(lang === \"zh\" ? \"請輸入電郵和密碼。\" : \"Enter your email and password.\", email);\n  const api = apis(CONFIG, env);\n  let auth;\n  try {\n    auth = await signIn(api, email, password);\n  } catch (e) {\n    return page(zhSignIn(lang, e) || signInMessage(e), email);\n  }\n  const db = new UserDb(api, auth.uid, auth.idToken);\n  let conn;\n  try {\n    conn = await db.get(CONNECTOR_ID);\n  } catch (e) {\n    return page(firestoreMessage(e), email);\n  }\n  if (!conn || conn.deleted || conn.type !== \"connector\") return page(w.noConn, email);\n  try {\n    await db.save([{ ...conn, authAt: Date.now(), authEmail: auth.email, updatedAt: Math.max(Date.now(), (conn.updatedAt || 0) + 1), dev: \"claude\" }]);\n  } catch {\n  }\n  const code = await seal(CONFIG.secret, \"code\", {\n    u: auth.uid,\n    r: auth.refreshToken,\n    i: auth.idToken,\n    ie: auth.exp,\n    g: conn.gen,\n    cc: r.cc,\n    ru: r.ru,\n    cid: r.cid,\n    exp: Date.now() + CODE_LIFE\n  });\n  return redirectTo(r.ru, { code, state: r.st });\n}\nfunction zhSignIn(lang, e) {\n  if (lang !== \"zh\") return null;\n  const c = e && e.code || \"\";\n  if (/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND|INVALID_EMAIL/.test(c)) return \"電郵或密碼不正確。請使用你在計算機「同步」所用的帳戶。\";\n  if (/TOO_MANY_ATTEMPTS/.test(c)) return \"嘗試次數太多，請等一分鐘再試。\";\n  return null;\n}\nfunction firestoreMessage(e) {\n  if (e instanceof FirebaseError && /PERMISSION_DENIED|^403$/.test(e.code)) return \"Your Firestore rules blocked the connector. Use the rules from the calculator’s guide (Sync & Claude → How to set up sync).\";\n  if (e instanceof FirebaseError && /NOT_FOUND|^404$/.test(e.code)) return \"There’s no Firestore database in this Firebase project yet.\";\n  return `Couldn’t reach your Firebase project (${e && e.message || \"unknown error\"}).`;\n}\nasync function readTokenRequest(request) {\n  const type = request.headers.get(\"content-type\") || \"\";\n  let p = {};\n  if (type.includes(\"application/json\")) {\n    try {\n      p = await request.json();\n    } catch {\n    }\n  } else {\n    const text2 = await request.text();\n    p = Object.fromEntries(new URLSearchParams(text2));\n  }\n  const basic = /^Basic\\s+(.+)$/i.exec(request.headers.get(\"authorization\") || \"\");\n  if (basic) {\n    try {\n      const [id, secret] = atob(basic[1]).split(\":\").map(decodeURIComponent);\n      p.client_id = p.client_id || id;\n      p.client_secret = secret;\n    } catch {\n    }\n  }\n  return p;\n}\nasync function issueTokens(uid, idToken, idExp, refreshToken, gen) {\n  const exp = Math.max(Date.now() + 6e4, idExp - 6e4);\n  const access = await seal(CONFIG.secret, \"access\", { u: uid, i: idToken, g: gen, exp });\n  const refreshTok = await seal(CONFIG.secret, \"refresh\", { u: uid, r: refreshToken, g: gen, at: Date.now() });\n  return json({ access_token: access, token_type: \"Bearer\", expires_in: Math.floor((exp - Date.now()) / 1e3), refresh_token: refreshTok, scope: SCOPE });\n}\nasync function token(request, env) {\n  const p = await readTokenRequest(request);\n  if (p.client_secret && p.client_id && !String(p.client_id).startsWith(\"http\")) {\n    if (!sameText(String(p.client_secret), await mac(CONFIG.secret, `client:${p.client_id}`))) return oauthError(\"invalid_client\", \"The client secret is wrong.\", 401);\n  }\n  const api = apis(CONFIG, env);\n  if (p.grant_type === \"authorization_code\") {\n    const c = await unseal(CONFIG.secret, \"code\", String(p.code || \"\"));\n    if (!c) return oauthError(\"invalid_grant\", \"The sign-in code isn’t valid.\");\n    if (c.expired) return oauthError(\"invalid_grant\", \"The sign-in code has expired. Connect again.\");\n    if (p.redirect_uri && p.redirect_uri !== c.ru) return oauthError(\"invalid_grant\", \"redirect_uri doesn’t match.\");\n    if (p.client_id && p.client_id !== c.cid) return oauthError(\"invalid_grant\", \"client_id doesn’t match.\");\n    if (!await pkceOk(p.code_verifier, c.cc)) return oauthError(\"invalid_grant\", \"The PKCE code_verifier doesn’t match.\");\n    return issueTokens(c.u, c.i, c.ie, c.r, c.g);\n  }\n  if (p.grant_type === \"refresh_token\") {\n    const r = await unseal(CONFIG.secret, \"refresh\", String(p.refresh_token || \"\"));\n    if (!r) return oauthError(\"invalid_grant\", \"The refresh token isn’t valid. Connect again.\");\n    let fresh;\n    try {\n      fresh = await refresh(api, r.r);\n    } catch (e) {\n      if (e instanceof FirebaseError && e.status >= 400 && e.status < 500) return oauthError(\"invalid_grant\", \"Your calculator sign-in has ended (for example, the password changed). Connect again.\");\n      return oauthError(\"temporarily_unavailable\", \"Couldn’t reach Firebase. Try again shortly.\", 503);\n    }\n    let conn;\n    try {\n      conn = await new UserDb(api, fresh.uid, fresh.idToken).get(CONNECTOR_ID);\n    } catch (e) {\n      if (e instanceof FirebaseError && e.status >= 500) return oauthError(\"temporarily_unavailable\", \"Couldn’t reach Firestore. Try again shortly.\", 503);\n      return oauthError(\"invalid_grant\", firestoreMessage(e));\n    }\n    if (!conn || conn.deleted || conn.gen !== r.g) return oauthError(\"invalid_grant\", \"Claude’s access was turned off in the DCF calculator. Connect again.\");\n    return issueTokens(fresh.uid, fresh.idToken, fresh.exp, fresh.refreshToken, r.g);\n  }\n  return oauthError(\"unsupported_grant_type\", \"Use authorization_code or refresh_token.\");\n}\nvar result = (id, r) => ({ jsonrpc: \"2.0\", id, result: r });\nvar rpcError = (id, code, message) => ({ jsonrpc: \"2.0\", id: id ?? null, error: { code, message } });\nasync function handleRpc(msg, session) {\n  if (!msg || typeof msg !== \"object\" || msg.jsonrpc !== \"2.0\" || typeof msg.method !== \"string\") {\n    if (msg && msg.jsonrpc === \"2.0\" && (\"result\" in msg || \"error\" in msg)) return null;\n    return rpcError(msg && msg.id, -32600, \"Invalid request\");\n  }\n  const note = msg.id === void 0;\n  const p = msg.params || {};\n  switch (msg.method) {\n    case \"initialize\": {\n      const want = p.protocolVersion;\n      return result(msg.id, {\n        protocolVersion: PROTOCOLS.includes(want) ? want : PROTOCOLS[0],\n        capabilities: { tools: { listChanged: false } },\n        serverInfo: { name: \"dcf-calculator\", title: \"DCF Calculator\", version: VERSION },\n        instructions: SERVER_INSTRUCTIONS\n      });\n    }\n    case \"ping\":\n      return note ? null : result(msg.id, {});\n    case \"tools/list\":\n      return result(msg.id, { tools: toolList() });\n    case \"resources/list\":\n      return result(msg.id, { resources: [] });\n    case \"prompts/list\":\n      return result(msg.id, { prompts: [] });\n    case \"tools/call\": {\n      const tool = findTool(p.name);\n      if (!tool) return rpcError(msg.id, -32602, `Unknown tool: ${p.name}`);\n      const args = p.arguments && typeof p.arguments === \"object\" && !Array.isArray(p.arguments) ? p.arguments : {};\n      try {\n        const out = await callTool(tool, args, session);\n        return result(msg.id, { content: [{ type: \"text\", text: JSON.stringify(out) }] });\n      } catch (e) {\n        if (e instanceof AccessError) throw e;\n        if (e instanceof ToolError) return result(msg.id, { content: [{ type: \"text\", text: e.message }], isError: true });\n        if (e instanceof FirebaseError) {\n          if (e.status === 401 || /UNAUTHENTICATED/.test(e.code)) throw new AccessError(\"sign-in expired\");\n          return result(msg.id, { content: [{ type: \"text\", text: firestoreMessage(e) }], isError: true });\n        }\n        console.error(\"tool failed\", p.name, e && e.stack);\n        return result(msg.id, { content: [{ type: \"text\", text: `Something went wrong in the DCF connector: ${e && e.message || e}` }], isError: true });\n      }\n    }\n    default:\n      if (note || msg.method.startsWith(\"notifications/\")) return null;\n      return rpcError(msg.id, -32601, `Method not found: ${msg.method}`);\n  }\n}\nasync function mcp(request, env, origin, path) {\n  const m = /^Bearer\\s+(.+)$/i.exec(request.headers.get(\"authorization\") || \"\");\n  if (!m) return unauthorized(origin, path);\n  const a = await unseal(CONFIG.secret, \"access\", m[1].trim());\n  if (!a) return unauthorized(origin, path, \"invalid_token\", \"The access token is not valid.\");\n  if (a.expired) return unauthorized(origin, path, \"invalid_token\", \"The access token has expired.\");\n  let body;\n  try {\n    body = await request.json();\n  } catch {\n    return json(rpcError(null, -32700, \"Parse error\"), 400);\n  }\n  const api = apis(CONFIG, env);\n  const session = { gen: a.g, db: () => new UserDb(api, a.u, a.i) };\n  const batch = Array.isArray(body);\n  const msgs = batch ? body : [body];\n  if (!msgs.length) return json(rpcError(null, -32600, \"Empty batch\"), 400);\n  const replies = [];\n  try {\n    for (const msg of msgs) {\n      const r = await handleRpc(msg, session);\n      if (r) replies.push(r);\n    }\n  } catch (e) {\n    if (e instanceof AccessError) return unauthorized(origin, path, \"invalid_token\", \"The DCF calculator needs you to connect again.\");\n    throw e;\n  }\n  if (!replies.length) return new Response(null, { status: 202, headers: CORS });\n  return json(batch ? replies : replies[0]);\n}\nvar worker_default = {\n  async fetch(request, env) {\n    const url = new URL(request.url);\n    const origin = url.origin;\n    const path = url.pathname.replace(/\\/+$/, \"\") || \"/\";\n    const method = request.method;\n    if (method === \"OPTIONS\") return new Response(null, { status: 204, headers: CORS });\n    try {\n      if (path === \"/health\") {\n        return json({ ok: ready(), app: \"dcf-connector\", version: VERSION, projectId: CONFIG.projectId || null, mcp: `${origin}/mcp` });\n      }\n      if (path === \"/\" && method === \"GET\") {\n        return html(homePage({ lang: langOf(request), mcpUrl: `${origin}/mcp`, projectId: CONFIG.projectId, version: VERSION, ready: ready() }));\n      }\n      if (!ready()) return json({ error: \"not_configured\", error_description: words(\"en\").notSetUp }, 503);\n      if (path.startsWith(\"/.well-known/oauth-protected-resource\")) return json(resourceMeta(origin, path.endsWith(\"/mcp\") ? \"/mcp\" : \"/\"));\n      if (path.startsWith(\"/.well-known/oauth-authorization-server\") || path.startsWith(\"/.well-known/openid-configuration\")) return json(serverMeta(origin));\n      if (path === \"/register\" && method === \"POST\") return register(request);\n      if (path === \"/authorize\" && method === \"GET\") return authorizeStart(request, url);\n      if (path === \"/authorize\" && method === \"POST\") return authorizeFinish(request, env);\n      if (path === \"/token\" && method === \"POST\") return token(request, env);\n      if (path === \"/revoke\" && method === \"POST\") return json({});\n      if (path === \"/mcp\" || path === \"/\") {\n        if (method === \"POST\") return mcp(request, env, origin, path);\n        if (method === \"GET\" && /text\\/html/.test(request.headers.get(\"accept\") || \"\")) {\n          return html(homePage({ lang: langOf(request), mcpUrl: `${origin}/mcp`, projectId: CONFIG.projectId, version: VERSION, ready: true }));\n        }\n        return new Response(\"Use POST for MCP messages.\", { status: 405, headers: { allow: \"POST\", ...CORS } });\n      }\n      return json({ error: \"not_found\" }, 404);\n    } catch (e) {\n      console.error(e && e.stack);\n      return json({ error: \"server_error\", error_description: e && e.message || \"Unexpected error\" }, 500);\n    }\n  }\n};\nexport {\n  worker_default as default\n};\n"][0] || '';
+  const CONNECTOR_VERSION = (/version (\d+\.\d+\.\d+)/.exec(CONNECTOR_CODE) || [])[1] || '';
+  const sync = { avail: false, cfg: null, uid: '', email: '', rt: '', idToken: '', idExp: 0, last: '', pending: {}, conn: null,
+    busy: false, again: false, errKey: '', errArg: '', lastOk: 0, timer: 0, working: false, formErr: '', checkMsg: '', checkKind: '', checking: false };
+
+  function syncSave() {
+    lsSet(LS_SYNC, { cfg: sync.cfg, uid: sync.uid, email: sync.email, rt: sync.rt, last: sync.last, pending: sync.pending, conn: sync.conn, lastOk: sync.lastOk });
+  }
+  function syncLoad() {
+    const s = lsGet(LS_SYNC);
+    if (!s || typeof s !== 'object') return;
+    sync.cfg = s.cfg || null; sync.uid = s.uid || ''; sync.email = s.email || ''; sync.rt = s.rt || '';
+    sync.last = s.last || ''; sync.pending = s.pending && typeof s.pending === 'object' ? s.pending : {}; sync.conn = s.conn || null; sync.lastOk = s.lastOk || 0;
+  }
+  const syncOn = () => !!(sync.avail && sync.cfg && sync.uid && sync.rt);
+
+  /* ----- Firebase settings and setup codes (the same TW1- codes Checkmate shows) ----- */
+  function keyedErr(key, arg) { const e = new Error(key); e.key = key; e.arg = arg; return e; }
+  function parseFirebaseConfig(text) {
+    const raw = String(text || '').trim();
+    if (!raw) throw keyedErr('syErrCfg');
+    let obj = null;
+    if (/^TW1-/.test(raw)) {
+      try { obj = JSON.parse(decodeURIComponent(escape(atob(raw.slice(4).replace(/-/g, '+').replace(/_/g, '/'))))); }
+      catch (e) { throw keyedErr('syErrCfgBad'); }
+    } else {
+      const a = raw.indexOf('{'), b = raw.lastIndexOf('}');
+      if (a < 0 || b < a) throw keyedErr('syErrCfgBad');
+      let body = raw.slice(a, b + 1);
+      try { obj = JSON.parse(body); }
+      catch (e) {
+        body = body.replace(/\/\/.*$/gm, '').replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, '$1"$2":').replace(/'([^']*)'/g, '"$1"').replace(/,\s*}/g, '}');
+        try { obj = JSON.parse(body); } catch (e2) { throw keyedErr('syErrCfgBad'); }
+      }
+    }
+    if (!obj || !obj.apiKey || !obj.projectId) throw keyedErr('syErrCfgBad');
+    const out = {};
+    ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'].forEach(k => { if (obj[k]) out[k] = String(obj[k]); });
+    if (!out.authDomain) out.authDomain = out.projectId + '.firebaseapp.com';
+    return out;
+  }
+  const setupCode = cfg => 'TW1-' + btoa(unescape(encodeURIComponent(JSON.stringify(cfg)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+  /* ----- Firestore values ----- */
+  function fsEnc(v) {
+    if (v === null || v === undefined) return { nullValue: null };
+    if (typeof v === 'boolean') return { booleanValue: v };
+    if (typeof v === 'number') return !isFinite(v) ? { nullValue: null } : Number.isSafeInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+    if (typeof v === 'string') return { stringValue: v };
+    if (Array.isArray(v)) { const values = v.filter(x => x !== undefined).map(fsEnc); return { arrayValue: values.length ? { values: values } : {} }; }
+    if (typeof v === 'object') return { mapValue: { fields: fsFields(v) } };
+    return { nullValue: null };
+  }
+  function fsFields(o) { const out = {}; Object.keys(o).forEach(k => { if (o[k] !== undefined && typeof o[k] !== 'function') out[k] = fsEnc(o[k]); }); return out; }
+  function fsDec(v) {
+    if (!v || typeof v !== 'object') return null;
+    if ('nullValue' in v) return null;
+    if ('booleanValue' in v) return !!v.booleanValue;
+    if ('integerValue' in v) return Number(v.integerValue);
+    if ('doubleValue' in v) return Number(v.doubleValue);
+    if ('stringValue' in v) return v.stringValue;
+    if ('timestampValue' in v) return Date.parse(v.timestampValue);
+    if ('arrayValue' in v) return ((v.arrayValue && v.arrayValue.values) || []).map(fsDec);
+    if ('mapValue' in v) { const o = {}, f = (v.mapValue && v.mapValue.fields) || {}; Object.keys(f).forEach(k => { o[k] = fsDec(f[k]); }); return o; }
+    return null;
+  }
+  // Server times as text that sorts correctly whatever the number of decimals.
+  const tsKey = s => String(s || '').replace(/(?:\.(\d+))?Z$/, (m, f) => '.' + String(f || '').padEnd(9, '0') + 'Z');
+
+  /* ----- talking to Firebase ----- */
+  const fsRoot = () => 'projects/' + sync.cfg.projectId + '/databases/(default)/documents';
+  const fsName = id => fsRoot() + '/users/' + sync.uid + '/dcf/' + id;
+  async function postJson(url, body, headers, form) {
+    let res;
+    try {
+      res = await fetch(url, { method: 'POST', headers: Object.assign({ 'content-type': form ? 'application/x-www-form-urlencoded' : 'application/json' }, headers || {}), body: form ? body : JSON.stringify(body) });
+    } catch (e) { throw keyedErr('syErrNet'); }
+    let j = null;
+    try { j = await res.json(); } catch (e) { j = null; }
+    const err = j && (j.error || (Array.isArray(j) && j[0] && j[0].error));
+    if (!res.ok || err) { const e = new Error((err && (err.message || err.status)) || ('HTTP ' + res.status)); e.status = res.status; e.fs = err && err.status; throw e; }
+    return j;
+  }
+  function authErrKey(e) {
+    const m = String((e && e.message) || '');
+    if (e && e.key) return e.key;
+    if (/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND/.test(m)) return 'syErrLogin';
+    if (/EMAIL_EXISTS/.test(m)) return 'syErrExists';
+    if (/WEAK_PASSWORD/.test(m)) return 'syErrWeak';
+    if (/INVALID_EMAIL|MISSING_EMAIL/.test(m)) return 'syErrEmail';
+    if (/MISSING_PASSWORD/.test(m)) return 'syErrPw';
+    if (/OPERATION_NOT_ALLOWED|PASSWORD_LOGIN_DISABLED/.test(m)) return 'syErrNoPw';
+    if (/CONFIGURATION_NOT_FOUND/.test(m)) return 'syErrNoAuth';
+    if (/API key|API_KEY/i.test(m)) return 'syErrKey';
+    if (/TOO_MANY_ATTEMPTS/.test(m)) return 'syErrMany';
+    if (/INVALID_REFRESH_TOKEN|TOKEN_EXPIRED|USER_NOT_FOUND|USER_DISABLED|INVALID_ID_TOKEN/.test(m)) return 'syErrExpired';
+    if (e && (e.fs === 'PERMISSION_DENIED' || e.status === 403)) return 'syErrRules';
+    if (e && (e.fs === 'NOT_FOUND' || e.status === 404) || /database.*does not exist/i.test(m)) return 'syErrNoDb';
+    return 'syErrOther';
+  }
+  async function fbAuth(cfg, email, password, create) {
+    const j = await postJson('https://identitytoolkit.googleapis.com/v1/accounts:' + (create ? 'signUp' : 'signInWithPassword') + '?key=' + encodeURIComponent(cfg.apiKey),
+      { email: email, password: password, returnSecureToken: true });
+    return { uid: j.localId, email: j.email || email, idToken: j.idToken, rt: j.refreshToken, exp: Date.now() + (parseInt(j.expiresIn, 10) || 3600) * 1000 };
+  }
+  async function fbToken() {
+    if (sync.idToken && Date.now() < sync.idExp - 60000) return sync.idToken;
+    const j = await postJson('https://securetoken.googleapis.com/v1/token?key=' + encodeURIComponent(sync.cfg.apiKey),
+      'grant_type=refresh_token&refresh_token=' + encodeURIComponent(sync.rt), null, true);
+    sync.idToken = j.id_token; sync.idExp = Date.now() + (parseInt(j.expires_in, 10) || 3600) * 1000;
+    if (j.refresh_token && j.refresh_token !== sync.rt) { sync.rt = j.refresh_token; syncSave(); }
+    return sync.idToken;
+  }
+  async function fsCall(path, body) {
+    for (let i = 0; ; i++) {
+      const tok = await fbToken();
+      try { return await postJson('https://firestore.googleapis.com/v1/' + path, body, { authorization: 'Bearer ' + tok }); }
+      catch (e) { if (e.status === 401 && i === 0) { sync.idToken = ''; continue; } throw e; }
+    }
+  }
+
+  /* ----- pulling and pushing ----- */
+  const toEntry = (d, id) => {
+    const e = Object.assign({}, d, { id: id });
+    ['type', 'srv', 'updatedAt', 'deleted'].forEach(k => { delete e[k]; });
+    return e;
+  };
+  async function pull() {
+    const first = !sync.last;
+    const fresh = [], pulled = new Set();
+    let changed = false;
+    for (let page = 0; page < 40; page++) {
+      const sq = { from: [{ collectionId: 'dcf' }], orderBy: [{ field: { fieldPath: 'srv' }, direction: 'ASCENDING' }], limit: 300 };
+      if (sync.last) sq.where = { fieldFilter: { field: { fieldPath: 'srv' }, op: 'GREATER_THAN', value: { timestampValue: sync.last } } };
+      const rows = (await fsCall(fsRoot() + '/users/' + sync.uid + ':runQuery', { structuredQuery: sq })).filter(r => r && r.document);
+      rows.forEach(r => {
+        const doc = r.document, id = doc.name.slice(doc.name.lastIndexOf('/') + 1);
+        const srv = doc.fields && doc.fields.srv && doc.fields.srv.timestampValue;
+        if (srv && tsKey(srv) > tsKey(sync.last)) sync.last = srv;
+        const d = fsDec({ mapValue: { fields: doc.fields || {} } });
+        pulled.add(id);
+        if (id === CONN_ID) { if (!sync.pending[CONN_ID]) sync.conn = d; return; }
+        if (d.type !== 'valuation' || sync.pending[id]) return;
+        const i = store.entries.findIndex(e => e.id === id);
+        if (d.deleted) { if (i >= 0) { store.entries.splice(i, 1); changed = true; if (state.loadedFrom && state.loadedFrom.id === id) state.loadedFrom = null; } return; }
+        const e = toEntry(d, id);
+        if (i >= 0) store.entries[i] = e;
+        else { store.entries.unshift(e); if (!first && e.by === 'claude') fresh.push(e); }
+        changed = true;
+      });
+      if (rows.length < 300) break;
+    }
+    if (first) {
+      // Saves made in this browser while sync was off go up to the account.
+      store.entries.forEach(e => { if (e && e.id && !pulled.has(e.id) && !sync.pending[e.id]) sync.pending[e.id] = 'put'; });
+    }
+    if (changed || first) { lsSet(LS_HIST, store.entries); renderHistory(); renderStockNote(); }
+    fresh.forEach(e => {
+      const r = e.result || {}, c = (e.inputs && e.inputs.currency) || '$';
+      toast(t('syClaudeSaved', e.ticker, fmtPrice(r.fair, c)), { label: t('syOpen'), fn: () => { const x = findEntry(e.id); if (x) loadEntry(x); } });
+    });
+  }
+  async function push() {
+    const ids = Object.keys(sync.pending);
+    if (!ids.length) return;
+    const now = Date.now();
+    for (let i = 0; i < ids.length; i += 400) {
+      const chunk = ids.slice(i, i + 400);
+      const writes = chunk.map(id => {
+        const w = { update: { name: fsName(id) }, updateTransforms: [{ fieldPath: 'srv', setToServerValue: 'REQUEST_TIME' }] };
+        if (id === CONN_ID) {
+          // Only the fields this page changed, so a sign-in the connector just noted isn't overwritten.
+          const c = Object.assign({}, sync.conn || {}, { updatedAt: now });
+          const paths = (Array.isArray(sync.pending[id]) ? sync.pending[id].concat(['updatedAt']) : Object.keys(c)).filter(p => p !== 'srv');
+          const f = {}; paths.forEach(p => { f[p] = c[p] === undefined ? null : c[p]; });
+          w.update.fields = fsFields(f); w.updateMask = { fieldPaths: paths.filter((p, j) => paths.indexOf(p) === j) };
+          return w;
+        }
+        const e = findEntry(id);
+        const doc = sync.pending[id] === 'del' || !e ? { id: id, type: 'valuation', deleted: true, updatedAt: now } : Object.assign({}, e, { type: 'valuation', updatedAt: now });
+        delete doc.srv;
+        w.update.fields = fsFields(doc);
+        return w;
+      });
+      await fsCall(fsRoot() + ':commit', { writes: writes });
+      chunk.forEach(id => { delete sync.pending[id]; });
+      syncSave();
+    }
+  }
+  async function syncNow() {
+    if (!syncOn()) return;
+    if (sync.busy) { sync.again = true; return; }
+    sync.busy = true;
+    try {
+      await push();
+      await pull();
+      await push(); // anything the first pull queued (this browser's earlier saves)
+      sync.lastOk = Date.now(); sync.errKey = ''; sync.errArg = '';
+    } catch (e) {
+      sync.errKey = authErrKey(e); sync.errArg = e && e.message;
+      // A sign-in that has ended (password changed, account removed) needs the password again.
+      if (sync.errKey === 'syErrExpired') { sync.rt = ''; sync.idToken = ''; sync.formErr = 'syErrExpired'; clearInterval(sync.timer); }
+    } finally {
+      sync.busy = false; syncSave(); renderStatus(); renderSync();
+      if (sync.again) { sync.again = false; setTimeout(syncNow, 50); }
+    }
+  }
+  let syncSoonTimer = 0;
+  function syncSoon() { clearTimeout(syncSoonTimer); syncSoonTimer = setTimeout(syncNow, 400); }
+  function syncQueue(id, what) { if (!syncOn()) return; sync.pending[id] = what; syncSave(); syncSoon(); }
+  function syncStartTimer() {
+    clearInterval(sync.timer);
+    if (!syncOn()) return;
+    sync.timer = setInterval(() => { if (document.visibilityState !== 'hidden') syncNow(); }, SYNC_EVERY);
+  }
+
+  async function syncSignIn(create) {
+    if (sync.working) return;
+    sync.formErr = ''; sync.working = true; renderSync();
+    try {
+      const cfg = parseFirebaseConfig(byId('sy-cfg').value);
+      const email = byId('sy-email').value.trim(), pw = byId('sy-pw').value;
+      if (!email) throw keyedErr('syErrEmail');
+      if (!pw) throw keyedErr('syErrPw');
+      const a = await fbAuth(cfg, email, pw, create);
+      const sameAccount = sync.cfg && sync.cfg.projectId === cfg.projectId && sync.uid === a.uid;
+      sync.cfg = cfg; sync.uid = a.uid; sync.email = a.email; sync.rt = a.rt; sync.idToken = a.idToken; sync.idExp = a.exp;
+      if (!sameAccount) { sync.last = ''; sync.pending = {}; sync.conn = null; sync.lastOk = 0; }
+      sync.errKey = '';
+      byId('sy-pw').value = '';
+      syncSave(); syncStartTimer();
+      await syncNow();
+      if (!sync.errKey) toast(t('sySignedIn'));
+    } catch (e) {
+      sync.formErr = authErrKey(e); sync.errArg = e && e.message;
+    } finally { sync.working = false; renderSync(); renderStatus(); }
+  }
+  function syncSignOut() {
+    clearInterval(sync.timer);
+    sync.uid = ''; sync.rt = ''; sync.idToken = ''; sync.email = ''; sync.last = ''; sync.pending = {}; sync.conn = null; sync.lastOk = 0; sync.errKey = '';
+    syncSave(); renderSync(); renderStatus(); toast(t('syOutDone'));
+  }
+
+  /* ----- the Claude connector ----- */
+  function randomKey(bytes) {
+    const b = new Uint8Array(bytes); crypto.getRandomValues(b);
+    return btoa(String.fromCharCode.apply(null, b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  const randomGen = () => crypto.getRandomValues(new Uint32Array(1))[0] % 2000000000 + 1;
+  // The record the connector checks on every call. Changing gen (Disconnect) cuts Claude off.
+  function ensureConn() {
+    if (sync.conn && sync.conn.secret) return sync.conn;
+    const now = Date.now();
+    sync.conn = { id: CONN_ID, type: 'connector', secret: randomKey(32), gen: randomGen(), createdAt: now, updatedAt: now, url: '' };
+    sync.pending[CONN_ID] = 'all'; syncSave(); syncSoon();
+    return sync.conn;
+  }
+  function connPatch(fields) {
+    Object.assign(sync.conn, fields, { updatedAt: Date.now() });
+    const was = sync.pending[CONN_ID];
+    if (was !== 'all') sync.pending[CONN_ID] = (Array.isArray(was) ? was : []).concat(Object.keys(fields));
+    syncSave(); syncSoon();
+  }
+  function connectorCode() {
+    const c = ensureConn();
+    const a = '/*DCF_CONFIG*/', b = '/*END_DCF_CONFIG*/', i = CONNECTOR_CODE.indexOf(a), j = CONNECTOR_CODE.indexOf(b);
+    const cfg = JSON.stringify({ apiKey: sync.cfg.apiKey, projectId: sync.cfg.projectId, secret: c.secret });
+    return CONNECTOR_CODE.slice(0, i + a.length) + cfg + CONNECTOR_CODE.slice(j);
+  }
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch (e) { /* fall back below */ }
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    ta.remove();
+    return ok;
+  }
+  function workerBase(text) {
+    let s = String(text || '').trim();
+    if (!s) return null;
+    if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
+    try { const u = new URL(s); return /\./.test(u.hostname) || u.hostname === 'localhost' ? u.origin : null; } catch (e) { return null; }
+  }
+  const newerVersion = (a, b) => {
+    const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number);
+    for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+    return false;
+  };
+  async function checkWorker() {
+    const base = workerBase(byId('cl-url').value);
+    sync.checkKind = 'err';
+    if (!base) { sync.checkMsg = t('clErrUrl'); renderSync(); return; }
+    sync.checking = true; sync.checkMsg = ''; renderSync();
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 12000);
+    try {
+      let res;
+      try { res = await fetch(base + '/health', { cache: 'no-store', signal: ctl.signal }); }
+      catch (e) {
+        // A site that answers but doesn't allow this page to read it (Cloudflare's Hello World) isn't the connector.
+        let reachable = false;
+        try { await fetch(base + '/health', { cache: 'no-store', mode: 'no-cors', signal: ctl.signal }); reachable = true; } catch (e2) { reachable = false; }
+        sync.checkMsg = reachable ? t('clErrNotConn') : t('clErrReach', new URL(base).host);
+        return;
+      }
+      let info = null;
+      try { info = await res.json(); } catch (e) { info = null; }
+      if (!info || info.app !== 'dcf-connector') { sync.checkMsg = t('clErrNotConn'); return; }
+      if (!info.ok) { sync.checkMsg = t('clErrNoCfg'); return; }
+      if (info.projectId !== sync.cfg.projectId) { sync.checkMsg = t('clErrOther', info.projectId, sync.cfg.projectId); return; }
+      ensureConn();
+      if (sync.conn.url !== base) connPatch({ url: base });
+      byId('cl-url').value = base;
+      if (CONNECTOR_VERSION && newerVersion(CONNECTOR_VERSION, info.version)) { sync.checkKind = 'warn'; sync.checkMsg = t('clCheckOld', info.version); }
+      else { sync.checkKind = 'ok'; sync.checkMsg = t('clCheckOk', info.version); }
+    } finally { clearTimeout(timer); sync.checking = false; renderSync(); }
+  }
+  const addToClaudeUrl = base => 'https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=' + encodeURIComponent('DCF Calculator') + '&connectorUrl=' + encodeURIComponent(base + '/mcp');
+  function claudeDisconnect() {
+    if (!sync.conn) return;
+    connPatch({ gen: randomGen(), authAt: null, authEmail: null });
+    renderSync(); toast(t('clDisconnected'));
+  }
+
+  /* ----- the Sync & Claude window ----- */
+  let syncReturnFocus = null;
+  function openSync() {
+    const m = byId('sy-modal');
+    if (!m.hidden) return;
+    syncReturnFocus = document.activeElement;
+    m.hidden = false; document.body.classList.add('modal-open');
+    if (sync.cfg && !byId('sy-cfg').value) byId('sy-cfg').value = setupCode(sync.cfg);
+    renderSync();
+    const first = syncOn() ? byId('sy-close') : byId('sy-cfg');
+    first.focus();
+    if (syncOn()) syncNow();
+  }
+  function closeSync() {
+    const m = byId('sy-modal');
+    if (m.hidden) return;
+    m.hidden = true; document.body.classList.remove('modal-open');
+    if (syncReturnFocus && syncReturnFocus.focus) syncReturnFocus.focus();
+  }
+  function renderAIAlt() {
+    const el = byId('ai-alt');
+    el.hidden = !sync.avail || !CONNECTOR_CODE;
+    if (el.hidden) return;
+    const on = syncOn() && sync.conn && sync.conn.authAt;
+    byId('ai-alt-t').textContent = t(on ? 'aiAltOn' : 'aiAltT');
+    byId('ai-alt-btn').textContent = t(on ? 'aiAltOnBtn' : 'aiAltBtn');
+  }
+  function renderSync() {
+    renderAIAlt();
+    if (!sync.avail) return;
+    const on = syncOn();
+    byId('sy-form').hidden = on;
+    byId('sy-on').hidden = !on;
+    if (!on && sync.email && !byId('sy-email').value) byId('sy-email').value = sync.email;
+    const fe = byId('sy-err'); fe.textContent = sync.formErr ? t(sync.formErr, sync.errArg) : ''; fe.hidden = !sync.formErr;
+    ['sy-signin', 'sy-signup'].forEach(id => { byId(id).disabled = sync.working; });
+    byId('sy-signin').textContent = t(sync.working ? 'syWorking' : 'sySignIn');
+    if (on) {
+      byId('sy-who').textContent = t('syOn', sync.email, sync.cfg.projectId);
+      const er = byId('sy-state');
+      er.textContent = sync.errKey ? t(sync.errKey, sync.errArg) : sync.lastOk ? t('syLast', fmtDateTime(sync.lastOk)) : t('syNever');
+      er.className = 'msg' + (sync.errKey ? ' err' : '');
+      byId('sy-code').value = setupCode(sync.cfg);
+    }
+    // Claude: needs sync, and the first sync, so the connector record isn't made twice.
+    const ready = on && sync.lastOk > 0;
+    byId('cl-need').hidden = ready;
+    byId('cl-steps').hidden = !ready;
+    if (!ready) return;
+    const c = sync.conn;
+    const url = byId('cl-url');
+    if (c && c.url && !url.value) url.value = c.url;
+    const base = c && c.url ? c.url : '';
+    const add = byId('cl-add');
+    if (base) { add.href = addToClaudeUrl(base); add.removeAttribute('aria-disabled'); add.classList.remove('is-off'); }
+    else { add.removeAttribute('href'); add.setAttribute('aria-disabled', 'true'); add.classList.add('is-off'); }
+    byId('cl-add-hint').hidden = !!base;
+    byId('cl-check').disabled = sync.checking;
+    byId('cl-check').textContent = t(sync.checking ? 'clChecking' : 'clCheck');
+    const cm = byId('cl-check-msg'); cm.textContent = sync.checkMsg; cm.hidden = !sync.checkMsg;
+    cm.className = 'msg' + (sync.checkKind === 'err' ? ' err' : sync.checkKind === 'warn' ? ' warn' : ' ok');
+    const st = byId('cl-status');
+    if (c && c.authAt) { byId('cl-status-t').textContent = t('clConnected', fmtDateTime(c.authAt), c.authEmail || sync.email); st.hidden = false; }
+    else if (c && c.url) { byId('cl-status-t').textContent = t('clNotYet'); st.hidden = false; }
+    else st.hidden = true;
+    byId('cl-disconnect').hidden = !(c && c.authAt);
+  }
+  function wireSync() {
+    byId('btn-sync').addEventListener('click', openSync);
+    byId('sy-close').addEventListener('click', closeSync);
+    byId('sy-modal').addEventListener('mousedown', e => { if (e.target === byId('sy-modal')) closeSync(); });
+    byId('sy-modal').addEventListener('keydown', e => {
+      if (e.key === 'Escape') { e.preventDefault(); closeSync(); return; }
+      if (e.key !== 'Tab') return;
+      // Keep Tab inside the window.
+      const f = Array.prototype.slice.call(byId('sy-card').querySelectorAll('button, [href], input, textarea, summary')).filter(x => !x.disabled && x.offsetParent !== null);
+      if (!f.length) return;
+      if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+    });
+    byId('sy-form').addEventListener('submit', e => { e.preventDefault(); syncSignIn(e.submitter && e.submitter.id === 'sy-signup'); });
+    byId('sy-now').addEventListener('click', () => { syncNow(); });
+    byId('sy-out').addEventListener('click', syncSignOut);
+    byId('sy-code-copy').addEventListener('click', async () => { if (await copyText(byId('sy-code').value)) toast(t('syCopied')); });
+    byId('cl-copy').addEventListener('click', async () => { if (await copyText(connectorCode())) toast(t('clCopied')); else toast(t('clCopyFail')); });
+    byId('cl-save').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([connectorCode()], { type: 'text/javascript' }));
+      a.download = 'dcf-connector.js'; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    });
+    byId('cl-check-form').addEventListener('submit', e => { e.preventDefault(); checkWorker(); });
+    byId('cl-add').addEventListener('click', e => { if (byId('cl-add').getAttribute('aria-disabled')) { e.preventDefault(); byId('cl-url').focus(); } });
+    byId('cl-disconnect').addEventListener('click', claudeDisconnect);
+    document.addEventListener('click', e => { if (e.target.closest('[data-open-sync]')) openSync(); });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(); });
+    window.addEventListener('online', () => syncNow());
+  }
+  // Called once saved history has loaded. Sync is offered only when saves live in this browser (not inside claude.ai).
+  function initSync() {
+    sync.avail = store.mode === 'local' && !window.claude && typeof fetch === 'function';
+    byId('btn-sync').hidden = !sync.avail;
+    if (!sync.avail) { byId('ai-alt').hidden = true; return; }
+    syncLoad();
+    renderStatus(); renderSync();
+    if (syncOn()) { syncStartTimer(); syncNow(); }
   }
 
   /* ================= Claude assistant ================= */
@@ -2136,6 +2845,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     renderAIOut();
     renderProposal();
     renderStockNote();
+    renderAIAlt();
   }
   function renderAIOut() {
     const out = byId('ai-out');
@@ -2623,6 +3333,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
     byId('btn-new').addEventListener('click', onNew);
     byId('btn-export').addEventListener('click', onExport);
     wireAI();
+    wireSync();
     let rz = 0;
     window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (state.openTicker) renderHistory(); }, 200); });
   }
@@ -2651,7 +3362,7 @@ table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabu
       setState(Object.assign({ name: EXAMPLE_NAME[LI()] }, EXAMPLE.values), EXAMPLE.sc); state.example = true;
     }
     render(); renderStatus(); renderHistory(); renderAI();
-    initStore();
+    initStore().then(initSync);
     initAI();
     const hot = window.claude && window.claude.hot;
     if (hot && typeof hot.snapshot === 'function') {
