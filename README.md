@@ -6,7 +6,7 @@ A free calculator that estimates what one share of a company is worth, based on 
 
 ## Open it
 
-1. Download the calculator. Under **Releases** on this page, open the newest one and download the file ending in **.html**, for example **dcf-calculator-v1.0.0.html**. (The file called **index.html** in the list above is the same thing, always the newest version.)
+1. Download the calculator. Under **Releases** on this page, open the newest one and download the file ending in **.html**, for example **dcf-calculator-v1.3.0.html**. (The file called **index.html** in the list above is the same thing, always the newest version.)
 2. Double-click it. It opens in your web browser (Chrome, Safari, Edge or Firefox).
 
 There is nothing to install and no account to create. The calculator opens with a made-up example company so you can see how it works. Press **New** to start your own.
@@ -61,7 +61,19 @@ Tips:
 
 - **Save snapshot** keeps a dated copy, grouped by ticker in the list on the left. Open a stock there to see every save, a chart of fair value against the share price over time, and buttons to load or delete each save.
 - **Export CSV** saves your whole history as a spreadsheet file that opens in Excel or Google Sheets.
-- Your saves stay on this computer, in the web browser you used. They don't move to another computer or browser, and clearing your browser's history and site data erases them. Export now and then to keep a copy.
+- Your saves stay on this computer, in the web browser you used, unless you turn on sync (below). Without sync they don't move to another computer or browser, and clearing your browser's history and site data erases them. Export now and then to keep a copy.
+
+## Sync between your devices (optional, about 5 minutes)
+
+Your saves can follow you to your other computers and your phone through a free Firebase project that only you own, so your saves never go to anyone else. **If you already use Checkmate, you can use the same Firebase project and the same account:** just paste Checkmate's setup code.
+
+1. Create a free project at [console.firebase.google.com](https://console.firebase.google.com), turn on **Email/Password** sign-in and create a **Firestore** database.
+2. In Firestore, open **Rules**, paste the rules the calculator shows you and press **Publish**.
+3. In **Project settings**, copy the **firebaseConfig** block.
+4. In the calculator, press **Sync & Claude** at the top, paste the block, type an email and a password, and press **Create account**.
+5. On your other devices, paste the **setup code** that Sync & Claude shows, and press **Sign in** with the same email and password.
+
+Under **How to set up sync**, the calculator lists every click. Saves you made before turning sync on are copied to your account.
 
 ## Language
 
@@ -69,12 +81,73 @@ Use the **EN / 繁中** button at the top right to switch between English and Tr
 
 ## Ask Claude
 
-The version shared through claude.ai has an extra **Ask Claude** panel. It can fill in a company from just its ticker, suggest guesses, and answer questions about your valuation. That panel only works inside claude.ai, so it doesn't appear in this downloaded copy.
+Claude, Anthropic's AI assistant, can do the research for you. There are two ways to ask, and both use your Claude plan, the same one you use on claude.ai, so there's no separate bill. Claude's own apps are the only place a Claude plan can be used: Anthropic doesn't let other apps, this calculator included, use it directly. So when you ask from the calculator, it opens a Claude chat for you.
+
+1. **The Ask Claude panel** in the calculator, set to **Your Claude plan** (the default). Type a ticker and press **Build model**, or press **Suggest assumptions**, **Update figures + assumptions**, **Review my inputs** or **Ask**. A new Claude chat opens with your request filled in, and your stock's numbers are included. The request is also copied, so if the message box is empty, paste it and send. In the Claude desktop app, use the **Open in the Claude desktop app instead** link that appears.
+2. **Any Claude chat**, on claude.ai, in the desktop app or on your phone. Just ask, for example "Build a DCF model for VST and save it".
+
+Connect the calculator to Claude once (see below), and Claude saves the valuations it builds straight into your calculator. Without that, Claude answers in the chat and lists the figures for you to type in.
+
+### Connect the calculator to Claude, just like Checkmate
+
+Add the calculator to Claude once. Then you can ask Claude in any chat, on claude.ai, in the desktop app or in the phone app, to value a stock. Claude finds the company's latest results, runs this calculator's own maths and saves the valuation to your calculator. A few seconds later it appears there, marked **Saved by Claude**. This uses your Claude plan, so you don't need an API key.
+
+![The Sync & Claude window in the calculator](docs/sync-claude.png)
+
+Things you can ask:
+
+- "Build a DCF model for VST and save it."
+- "Update my WTC.AX valuation with today's share price."
+- "Which of my saved stocks has the biggest margin of safety?"
+- "Delete my old NKE saves." (Claude checks with you first.)
+
+Set it up once, in about 5 minutes. Sync has to be on first.
+
+1. In the calculator, press **Sync & Claude**, then **Copy connector code**. The code already holds your Firebase details and a private key made just for you, so don't share it.
+2. Sign up or sign in at [dash.cloudflare.com](https://dash.cloudflare.com). The free plan is enough. Go to **Workers & Pages** → **Create** → **Start with Hello World!**, name it **dcf** and press **Deploy**. Then press **Edit code**, delete everything in worker.js, paste the connector code and press **Deploy**.
+3. Copy the address Cloudflare shows (it ends in **.workers.dev**), paste it into Sync & Claude and press **Check**.
+4. Press **Add to Claude**. Claude opens its **Add custom connector** box with everything filled in. Press **Add**, then **Connect**, and sign in with your sync email and password.
+5. In a Claude chat, turn on **DCF Calculator** under **+ → Connectors**, then ask away.
+
+Good to know:
+
+- Free Claude plans can add one custom connector. On Team and Enterprise plans, an owner adds it.
+- The connector runs on your own Cloudflare account and signs in to your own Firebase project as you. Your password only goes to your Firebase project, never to Claude, and nothing is kept anywhere else.
+- **Disconnect** in Sync & Claude stops Claude straight away, on every device. To undo it, connect again from Claude.
+- When a new version of the connector comes out, the **Check** button tells you. Copy the code again, paste it over the old code in Cloudflare and press **Deploy**.
+- A valuation is only as good as its figures and guesses. Check Claude's numbers against the company's own report.
+
+### Or pay through an API key instead
+
+If you'd rather Claude worked inside the calculator itself, switch the Ask Claude panel to **API key**. This is billed separately by Anthropic, not through your Claude plan. On API key, the panel can:
+
+- **Build a new model from a ticker:** type a ticker, such as NVDA or WTC.AX, and press **Build model**. Claude finds the company's latest figures, fills in every box and sets up the bear, base and bull outcomes. Everything it filled in is marked "Claude" until you change it, and **Undo** takes you back to what you had.
+- **Suggest assumptions** or **Update figures + assumptions** for the stock on screen. You see each suggested change and choose which ones to keep.
+- **Review my inputs:** a short list of what looks off and what to double-check.
+- **Ask a question** about your valuation, such as "Is a 10% discount rate right here?"
+
+In the downloaded calculator, the panel needs your own Anthropic API key. That's a private code that lets the calculator use Claude for you.
+
+1. Go to [console.anthropic.com](https://console.anthropic.com), sign in or create an account, and add some credit.
+2. Open **API keys**, create a key and copy it.
+3. In the calculator, paste it into **Connect Claude with your API key** and press **Connect**.
+
+Good to know:
+
+- What you use is charged to that Anthropic account. It's separate from any claude.ai subscription.
+- Claude can search the web, so it finds a company's latest results and share price. It's still worth checking the numbers against the company's own report.
+- Your key is kept only in the web browser on your computer, and is only sent to Anthropic. Don't connect it on a computer other people use. Press **Disconnect** to remove it.
+- If web search is switched off on your Anthropic account, Claude still works but uses what it already knows, which may be out of date. The calculator tells you when that happens.
+
+If you open the calculator inside claude.ai instead, it uses your claude.ai account, and you don't need a key.
 
 ## Version history
 
 The version you have is shown at the bottom of the calculator.
 
+- **1.3.0** (19 November 2026): The Ask Claude panel now uses your Claude plan by default. It opens a Claude chat with your request, so you don't need an API key or a separate bill. The API key is still there as an option.
+- **1.2.0** (19 November 2026): Use Claude with your Claude account, just like Checkmate. Ask in any Claude chat and the valuation appears in your calculator. Your saves can also sync between your devices through your own Firebase project.
+- **1.1.0** (19 November 2026): Ask Claude now works in the downloaded calculator once you connect your own Anthropic API key, and Claude looks up the latest figures on the web.
 - **1.0.0** (19 November 2026): the first public version.
 
 When a new version comes out, download it the same way. Your saved snapshots stay in your web browser, so they're still there when you open the new file in the same browser.
@@ -90,7 +163,7 @@ When a new version comes out, download it the same way. Your saved snapshots sta
 
 這是一個免費的股票估值計算機，依照公司未來十年預期帶來的現金，估算每一股的合理價。
 
-**開啟方式：** 在本頁的 **Releases** 下載最新版本的 **.html** 檔案（例如 **dcf-calculator-v1.0.0.html**），雙擊就會在瀏覽器（Chrome、Safari、Edge 或 Firefox）中開啟，不需要安裝或註冊。按右上角的 **EN / 繁中** 可以切換語言。版本號碼顯示在頁面最下方，目前是 1.0.0。
+**開啟方式：** 在本頁的 **Releases** 下載最新版本的 **.html** 檔案（例如 **dcf-calculator-v1.3.0.html**），雙擊就會在瀏覽器（Chrome、Safari、Edge 或 Firefox）中開啟，不需要安裝或註冊。按右上角的 **EN / 繁中** 可以切換語言。版本號碼顯示在頁面最下方，目前是 1.3.0。
 
 **使用步驟：**
 
@@ -100,8 +173,28 @@ When a new version comes out, download it the same way. Your saved snapshots sta
 4. 為悲觀、基本、樂觀三種情境填入成長率等假設。
 5. 在右邊查看合理價和安全邊際，再按「儲存快照」保存。
 
-**儲存：** 紀錄會存在這台電腦的這個瀏覽器裡。換電腦、換瀏覽器或清除瀏覽紀錄後就會消失，建議定期按「匯出 CSV」備份。
+**儲存：** 紀錄會存在這台電腦的這個瀏覽器裡。沒有開啟同步的話，換電腦、換瀏覽器或清除瀏覽紀錄後就會消失，建議定期按「匯出 CSV」備份。
 
-**Ask Claude：** 在 claude.ai 開啟的版本有「詢問 Claude」功能，只要輸入股票代號就能自動填入數字。下載的版本沒有這個功能。
+**同步到所有裝置（選用，約 5 分鐘）：** 透過一個只屬於你的免費 Firebase 專案，讓紀錄出現在你的每部電腦和手機上。**如果你有用 Checkmate，可以用同一個 Firebase 專案和帳戶，直接貼上 Checkmate 的設定碼即可。** 按上方的「同步與 Claude」，計算機會列出每個步驟：建立 Firebase 專案、開啟 Email/Password 登入、建立 Firestore 資料庫並貼上規則、複製 firebaseConfig，然後按「建立帳戶」。在其他裝置貼上設定碼再登入。
+
+**用你的 Claude 帳戶使用 Claude（和 Checkmate 一樣）：** 把計算機加到 Claude 一次，之後在任何 Claude 對話中（網頁、桌面 app 或手機 app）直接問，例如「幫 VST 建立 DCF 模型並儲存」。Claude 會查最新業績、用這個計算機本身的公式計算，並把估值存到你的計算機，幾秒後就會出現，標示為「Claude 儲存」。它使用你的 Claude 方案，不需要 API 金鑰。設定方法（需先開啟同步）：
+
+1. 在計算機按「同步與 Claude」，再按「複製連接器程式碼」。程式碼已包含你的 Firebase 資料和專屬私密金鑰，請不要分享。
+2. 到 [dash.cloudflare.com](https://dash.cloudflare.com) 註冊或登入（免費方案即可）。前往 **Workers & Pages** → **Create** → **Start with Hello World!**，名稱填 **dcf** 並按 **Deploy**。再按 **Edit code**，刪除 worker.js 的所有內容，貼上程式碼並按 **Deploy**。
+3. 複製以 **.workers.dev** 結尾的網址，貼到「同步與 Claude」並按「檢查」。
+4. 按「加到 Claude」，在 Claude 按 **Add**，再按 **Connect**，用同步的電郵和密碼登入。
+5. 在 Claude 對話的 **+ → Connectors** 開啟 **DCF Calculator**，就可以開始問了。
+
+你的密碼只會傳送到你自己的 Firebase 專案，不會給 Claude。在「同步與 Claude」按「中斷連接」可立即停止 Claude 的存取。
+
+**在計算機內詢問 Claude：** 「詢問 Claude」面板預設使用 **你的 Claude 方案**（和 claude.ai 同一個方案，不會另外收費）。輸入股票代號並按「建立模型」，或按其他按鈕，計算機就會開一個新的 Claude 對話並帶入你的請求和數字。請求也會複製，如果訊息框是空的，貼上再傳送即可。已連接計算機的話，Claude 會把估值直接存進來；沒有連接的話，Claude 會在對話中列出數字讓你輸入。Anthropic 只允許在 Claude 自己的 app 中使用 Claude 方案，所以計算機會為你打開 Claude，而不是直接在頁面內使用。
+
+如果想讓 Claude 直接在計算機內工作，可以切換到 **API 金鑰**（由 Anthropic 另外收費）：
+
+1. 到 [console.anthropic.com](https://console.anthropic.com) 登入或註冊，並加值。
+2. 在 **API keys** 建立金鑰並複製。
+3. 貼到計算機的「用你的 API 金鑰連接 Claude」，再按「連接」。
+
+使用費用記在你的 Anthropic 帳戶，和 claude.ai 方案分開計算。金鑰只會存在你這台電腦的瀏覽器裡，也只會傳送給 Anthropic；請不要在共用電腦上連接，按「中斷連接」即可移除。在 claude.ai 裡開啟的版本則使用你的 claude.ai 帳號，不需要金鑰。
 
 **注意：** 估值結果取決於你的假設，僅供學習和規劃參考，不構成投資建議。
