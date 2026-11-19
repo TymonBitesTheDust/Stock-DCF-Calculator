@@ -413,6 +413,13 @@ body.modal-open { overflow: hidden; }
 a.btn { text-decoration: none; }
 a.btn.is-off { opacity: .5; cursor: not-allowed; }
 .ai-alt { margin: 0; }
+.ai-route { display: inline-flex; justify-self: start; border: 1px solid var(--rule-strong); border-radius: 8px; overflow: hidden; background: var(--sheet); }
+.ai-route button { border: 0; background: transparent; min-height: 32px; padding: 0 12px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.ai-route button + button { border-left: 1px solid var(--rule-strong); }
+.ai-route button[aria-checked="true"] { background: var(--blue); color: var(--on-blue); }
+.ai-plan { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--blue-soft); font-size: 13px; color: var(--ink); }
+.ai-plan .link { margin-left: 4px; }
+.ai-status a { color: var(--blue); }
 .e-by { font-size: 11px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
 .e-by .tag-claude { font-weight: 600; color: var(--blue); background: var(--blue-soft); border-radius: 4px; padding: 0 5px; }
 .e-note { margin: 0; font-size: 11.5px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
@@ -476,6 +483,10 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
           <h2 id="ai-h" data-tb="aiH">Ask Claude</h2>
           <p class="hint" id="ai-intro"></p>
         </div>
+        <div class="ai-route" id="ai-route" role="radiogroup" data-tal="aiRouteAria" hidden>
+          <button type="button" role="radio" data-route="plan" data-t="aiRoutePlan" aria-checked="true">Your Claude plan</button><button type="button" role="radio" data-route="key" data-t="aiRouteKey" aria-checked="false">API key</button>
+        </div>
+        <p class="ai-plan" id="ai-plan" hidden><span id="ai-plan-t"></span><button type="button" class="link" id="ai-plan-btn" data-open-sync hidden></button></p>
         <p class="hint ai-alt" id="ai-alt" hidden><span id="ai-alt-t"></span> <button type="button" class="link" id="ai-alt-btn" data-open-sync></button></p>
         <form class="ai-connect" id="ai-connect" hidden>
           <label for="ai-key" data-tb="aiKeyL">Connect Claude with your API key</label>
@@ -505,7 +516,7 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
           <div class="control"><input id="ai-q" type="text" autocomplete="off" data-tph="aiAskPh" data-tal="aiAskAria" disabled></div>
           <button type="submit" class="btn primary" id="ai-send" data-t="aiSend" disabled>Ask</button>
         </form>
-        <p class="ai-status" role="status" aria-live="polite"><span id="ai-status-t"></span><button type="button" class="link" id="ai-stop" data-t="aiStop" hidden>Stop</button><button type="button" class="link" id="ai-clear" data-t="aiClear" hidden>Clear chat</button></p>
+        <p class="ai-status" role="status" aria-live="polite"><span id="ai-status-t"></span><a id="ai-desktop" data-t="aiPlanDesktop" hidden></a><button type="button" class="link" id="ai-stop" data-t="aiStop" hidden>Stop</button><button type="button" class="link" id="ai-clear" data-t="aiClear" hidden>Clear chat</button></p>
         <div class="ai-out" id="ai-out" hidden></div>
         <div class="ai-prop" id="ai-prop" hidden></div>
       </section>
@@ -998,6 +1009,19 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
     asOfL: [p => 'figures from ' + p, p => '數字來自 ' + p],
     aiAltT: ['Or use your Claude plan instead of an API key: connect the calculator to Claude once, then ask Claude in any chat.', '也可以用你的 Claude 方案代替 API 金鑰：把計算機連接到 Claude 一次，之後在任何對話中直接問 Claude。'],
     aiAltBtn: ['Set up Sync & Claude', '設定同步與 Claude'],
+    aiRouteAria: ['How Claude is paid for', 'Claude 的付費方式'],
+    aiRoutePlan: ['Your Claude plan', '你的 Claude 方案'],
+    aiRouteKey: ['API key', 'API 金鑰'],
+    aiIntroPlan: ['Type a ticker to build a new model, or ask Claude to update, check or explain the stock on screen. Each request opens a new Claude chat and uses your Claude plan, with no separate bill. Claude can look up the latest figures on the web there.',
+      '輸入股票代號建立新模型，或請 Claude 更新、檢查或解釋畫面上的股票。每個請求都會開一個新的 Claude 對話，使用你的 Claude 方案，不會另外收費。Claude 在那裡可以上網查最新數字。'],
+    aiPlanOn: ['Claude is connected to this calculator, so the valuations it builds are saved straight into it and appear here within seconds.', 'Claude 已連接到這個計算機，它建立的估值會直接存進來，幾秒內就會出現在這裡。'],
+    aiPlanOff: ['Claude will answer in the chat and list the figures for you to type in. To have its valuations saved straight into this calculator, connect the calculator to Claude once.', 'Claude 會在對話中回答，並列出數字讓你輸入。如想讓估值直接存進這個計算機，請把計算機連接到 Claude 一次。'],
+    aiPlanSetup: ['Set up Sync & Claude', '設定同步與 Claude'],
+    aiBuildHintPlan: ['Claude finds the company and its latest figures, sets up all three cases and saves the model here. Add .AX for the ASX, .TW for Taiwan, .HK for Hong Kong.', 'Claude 會找出公司和最新數字、設定三個情境，並把模型存到這裡。澳洲股票加 .AX，台股加 .TW，港股加 .HK。'],
+    aiBuildHintPlanOff: ['Claude finds the company and its latest figures and sets up all three cases in the chat, for you to type in. Add .AX for the ASX, .TW for Taiwan, .HK for Hong Kong.', 'Claude 會在對話中找出公司和最新數字並設定三個情境，讓你輸入。澳洲股票加 .AX，台股加 .TW，港股加 .HK。'],
+    aiPlanSent: ['Opened a new Claude chat with your request. It’s also copied: if the message box is empty, paste it and send.', '已開啟新的 Claude 對話並帶入你的請求，也已複製：如果訊息框是空的，請貼上再傳送。'],
+    aiPlanSentSave: [tk => 'Opened a new Claude chat for ' + tk + '. When Claude saves the valuation, it appears here. The request is also copied: if the message box is empty, paste it and send.', tk => '已為 ' + tk + ' 開啟新的 Claude 對話。Claude 儲存估值後，就會出現在這裡。請求也已複製：如果訊息框是空的，請貼上再傳送。'],
+    aiPlanDesktop: ['Open in the Claude desktop app instead', '改用 Claude 桌面 app 開啟'],
     aiAltOn: ['Claude is connected to this calculator through your Claude account. Ask in any Claude chat, for example “Build a DCF model for NVDA and save it”, and the valuation appears here.', 'Claude 已透過你的 Claude 帳戶連接到這個計算機。在任何 Claude 對話中直接問，例如「幫 NVDA 建立 DCF 模型並儲存」，估值就會出現在這裡。'],
     aiAltOnBtn: ['Sync & Claude', '同步與 Claude'],
     clH: ['2 · Use Claude with your Claude account', '2 · 用你的 Claude 帳戶使用 Claude'],
@@ -1078,7 +1102,7 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
   const LS_DRAFT_OLD = 'dcf-draft-v1';
   const LS_LANG = 'dcf-lang-v1';
   const MINUS = '−';
-  const APP_VERSION = '1.2.0';
+  const APP_VERSION = '1.3.0';
 
   /* ================= helpers ================= */
   const byId = id => document.getElementById(id);
@@ -1754,7 +1778,7 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
       html = esc(t('loadedNote', fmtDateTime(state.loadedFrom.savedAtMs))) + (state.dirty ? ' · <span class="edited">' + esc(t('editedNote')) + '</span>' : '') + t('period');
     } else if (arr.length) {
       html = esc(t('haveSaved', arr.length, tk)) + ' <button type="button" class="link" data-load-latest="' + esc(tk) + '">' + esc(t('loadLatest', fmtDate(arr[0].savedAtMs))) + '</button>';
-    } else if (tk && ai.state === 'ready' && !ai.busy && !isNum(num('fcf'))) {
+    } else if (tk && (ai.state === 'ready' || planRoute()) && !ai.busy && !isNum(num('fcf'))) {
       html = esc(t('notSaved')) + ' <button type="button" class="link" data-ai-fill>' + esc(t('aiFillThis', tk)) + '</button>';
     } else {
       html = esc(tk ? t('notSaved') : t('noTicker'));
@@ -2256,7 +2280,7 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
   }
   function renderAIAlt() {
     const el = byId('ai-alt');
-    el.hidden = !sync.avail || !CONNECTOR_CODE;
+    el.hidden = !sync.avail || !CONNECTOR_CODE || planRoute();
     if (el.hidden) return;
     const on = syncOn() && sync.conn && sync.conn.authAt;
     byId('ai-alt-t').textContent = t(on ? 'aiAltOn' : 'aiAltT');
@@ -2264,6 +2288,7 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
   }
   function renderSync() {
     renderAIAlt();
+    if (planRoute()) renderAI();
     if (!sync.avail) return;
     const on = syncOn();
     byId('sy-form').hidden = on;
@@ -2346,7 +2371,7 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
   /* ================= Claude assistant ================= */
   // Runs on the viewer's own Claude account through the `sample` capability. Claude can't browse,
   // so everything it proposes is shown as a reviewable list and applied only when the viewer chooses.
-  const ai = { mode: window.claude && typeof window.claude.use === 'function' ? 'claude' : 'key', fn: null, tools: false, state: 'pending', offKey: '', statusKey: '', statusArg: null, busy: false, ctl: null, proposal: null, built: null, chat: [], outMode: null, outText: '' };
+  const ai = { mode: window.claude && typeof window.claude.use === 'function' ? 'claude' : 'key', route: 'plan', handedOff: false, fn: null, tools: false, state: 'pending', offKey: '', statusKey: '', statusArg: null, busy: false, ctl: null, proposal: null, built: null, chat: [], outMode: null, outText: '' };
   const AI_CUR = CURRENCIES.map(c => c[0]);
   const AI_UNIT = { thousands: '1e3', millions: '1e6', billions: '1e9' };
   const AI_SUNIT = { single: '1', thousands: '1e3', millions: '1e6', billions: '1e9' };
@@ -2519,6 +2544,7 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
 
   async function initAI() {
     if (ai.mode === 'key') {
+      ai.route = lsGet(LS_ROUTE) === 'key' ? 'key' : 'plan';
       api.key = lsGet(LS_KEY) || '';
       if (api.key) { ai.fn = makeApiSample(); ai.tools = true; ai.state = 'ready'; } else ai.state = 'connect';
       renderAI();
@@ -2533,17 +2559,26 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
   }
   function setAIStatus(text) { byId('ai-status-t').textContent = text; }
   function renderAI() {
-    const off = ai.state !== 'ready';
-    if (ai.state === 'off' || ai.state === 'connect') byId('ai').setAttribute('data-off', ''); else byId('ai').removeAttribute('data-off');
+    const plan = planRoute();
+    const off = plan ? false : ai.state !== 'ready';
+    if (!plan && (ai.state === 'off' || ai.state === 'connect')) byId('ai').setAttribute('data-off', ''); else byId('ai').removeAttribute('data-off');
     ['ai-tk', 'ai-build-btn', 'ai-draft-a', 'ai-draft-all', 'ai-review', 'ai-send', 'ai-q'].forEach(id => { byId(id).disabled = off || ai.busy; });
     byId('ai-stop').hidden = !ai.busy;
     byId('ai-clear').hidden = !ai.chat.length || ai.busy;
-    const key = ai.state === 'off' ? (ai.offKey || 'aiOff') : ai.state === 'pending' ? 'aiConnecting' : ai.state === 'connect' ? '' : ai.statusKey;
+    const key = plan ? ai.statusKey : ai.state === 'off' ? (ai.offKey || 'aiOff') : ai.state === 'pending' ? 'aiConnecting' : ai.state === 'connect' ? '' : ai.statusKey;
     setAIStatus(key ? t(key, ai.statusArg) : '');
     const keyMode = ai.mode === 'key';
-    byId('ai-intro').textContent = t(keyMode ? 'aiIntroKey' : 'aiIntro');
-    byId('ai-connect').hidden = !(keyMode && ai.state === 'connect');
-    byId('ai-conn').hidden = !(keyMode && ai.state === 'ready');
+    byId('ai-intro').textContent = t(plan ? 'aiIntroPlan' : keyMode ? 'aiIntroKey' : 'aiIntro');
+    byId('ai-route').hidden = !keyMode;
+    document.querySelectorAll('[data-route]').forEach(b => { const on = b.dataset.route === (plan ? 'plan' : 'key'); b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1; });
+    const pc = plan && planConnected();
+    byId('ai-plan').hidden = !plan;
+    byId('ai-plan-t').textContent = plan ? t(pc ? 'aiPlanOn' : 'aiPlanOff') : '';
+    const pb = byId('ai-plan-btn'); pb.hidden = !plan || pc || !(typeof sync !== 'undefined' && sync.avail); pb.textContent = t('aiPlanSetup');
+    byId('ai-build-hint').textContent = t(plan ? (pc ? 'aiBuildHintPlan' : 'aiBuildHintPlanOff') : 'aiBuildHint');
+    byId('ai-desktop').hidden = !(plan && ai.handedOff);
+    byId('ai-connect').hidden = !(keyMode && !plan && ai.state === 'connect');
+    byId('ai-conn').hidden = !(keyMode && !plan && ai.state === 'ready');
     if (keyMode) {
       byId('ai-conn-t').textContent = t(api.web ? 'aiConnWeb' : 'aiConnNoWeb');
       const er = byId('ai-key-err'); er.textContent = api.err ? t(api.err) : ''; er.hidden = !api.err;
@@ -2602,6 +2637,59 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
       if (e && e.code === 'tools_unavailable') ai.tools = false;
       if (e && e.code === 'bad_key' && ai.mode === 'key') { aiForgetKey(); api.err = 'aiKeyBad'; ai.statusKey = ''; }
     } finally { ai.busy = false; ai.ctl = null; ai.outText = ai.outMode === 'review' ? ai.outText : ''; renderAI(); }
+  }
+
+  /* ----- Ask Claude on the viewer's Claude plan (downloaded calculator) ----- */
+  // Anthropic lets a Claude plan be used only inside Claude's own apps, not by other apps such as this
+  // downloaded page. So on "Your Claude plan" each request opens a new Claude chat with the request filled in.
+  // With the DCF Calculator connector, Claude saves the valuation and sync brings it back here.
+  const LS_ROUTE = 'dcf-ai-route-v1';
+  const planRoute = () => ai.mode === 'key' && ai.route === 'plan';
+  const planConnected = () => !!(typeof syncOn === 'function' && syncOn() && sync.conn && sync.conn.authAt);
+  function aiPlanPrompt(kind, arg) {
+    const tk = normTicker(kind === 'build' ? arg : state.values.ticker) || 'this stock';
+    const conn = planConnected();
+    const ctx = kind === 'build' ? '' : JSON.stringify(aiContext());
+    const lang = aiLangLine();
+    const saveLine = 'then save it with save-valuation, with asOf set to the period of the figures and a short note on your sources and the three cases. Finish with the fair value, margin of safety and signal in a few lines.';
+    if (kind === 'build') {
+      return conn
+        ? 'Use the DCF Calculator connector to build a new DCF model for ' + tk + '. First work out which company and listing the ticker means, then look up its latest reported results and current share price on the web, preferring the company\'s own filings and releases. Try your inputs with run-dcf, adjust anything implausible, ' + saveLine + ' ' + lang
+        : ['Build a DCF valuation for ' + tk + ' that I can type into my DCF calculator. Work out which company and listing the ticker means, and look up its latest reported results and current share price on the web.', '', AI_GUIDE, '',
+          'Give me, as a short list I can copy: the share price currency and the report currency (with an exchange rate if they differ), the amount and share units, the figures (fcf, revenue, sbc, cash, debt, shares, price, dps) and the period they are from, the method, the discount rate r, and for bear, base and bull: g1, g2 (or rg1, rg2, tm, tmYear for the margin method), tg and w. Then the fair value per share you get and what to double-check. ' + lang].join('\n');
+    }
+    if (kind === 'all' || kind === 'assume') {
+      const what = kind === 'all'
+        ? 'Look up the latest reported results and current share price on the web, then suggest updated figures, the method, the discount rate and the bear, base and bull assumptions.'
+        : 'Keep my company figures and settings exactly as they are, and suggest the method, the discount rate and the bear, base and bull assumptions that fit this company.';
+      return conn
+        ? 'Use the DCF Calculator connector to update my DCF valuation of ' + tk + '. My current inputs are below. ' + what + ' Check them with run-dcf, ' + saveLine + ' Also tell me what you changed and why. ' + lang + '\n\nMY CURRENT INPUTS (null = blank): ' + ctx
+        : ['I\'m valuing ' + tk + ' in my DCF calculator. ' + what + ' List each suggested value next to my current one so I can type it in, and say why. ' + lang, '', AI_GUIDE, '', 'MY CURRENT INPUTS (null = blank): ' + ctx].join('\n');
+    }
+    if (kind === 'review') {
+      return ['Review my DCF valuation of ' + tk + ' in 5 to 8 short bullet points: which inputs look off for this company and why, which assumption the result is most sensitive to, and what to double-check in the latest report. Mention specific numbers, and look up the latest figures on the web if that helps. ' + (conn ? 'You can check numbers with run-dcf from the DCF Calculator connector, but don\'t save anything. ' : '') + lang,
+        '', conn ? '' : AI_GUIDE, '', 'MY VALUATION (null = blank): ' + ctx].join('\n');
+    }
+    return [String(arg || '').slice(0, 2000), '', '(This is about my DCF valuation of ' + tk + (conn ? ', which you can also work with through the DCF Calculator connector' : '') + '. ' + lang + ')', '', 'MY VALUATION (null = blank): ' + ctx].join('\n');
+  }
+  function aiHandOff(kind, arg) {
+    const prompt = aiPlanPrompt(kind, arg);
+    // Copy first, while the click still counts as the viewer's own action; then open the chat.
+    try { if (navigator.clipboard) navigator.clipboard.writeText(prompt).catch(() => {}); } catch (e) { /* the link still carries it */ }
+    window.open('https://claude.ai/new?q=' + encodeURIComponent(prompt), '_blank', 'noopener');
+    const d = byId('ai-desktop');
+    d.href = 'claude://claude.ai/new?q=' + encodeURIComponent(prompt);
+    ai.handedOff = true;
+    const saves = planConnected() && (kind === 'build' || kind === 'all' || kind === 'assume');
+    ai.statusKey = saves ? 'aiPlanSentSave' : 'aiPlanSent';
+    ai.statusArg = saves ? normTicker(kind === 'build' ? arg : state.values.ticker) : null;
+    renderAI();
+  }
+  function setRoute(r) {
+    ai.route = r === 'key' ? 'key' : 'plan';
+    lsSet(LS_ROUTE, ai.route);
+    ai.statusKey = ''; ai.handedOff = false; ai.proposal = null; ai.outMode = null; ai.outText = '';
+    renderAI();
   }
 
   // A page tool Claude can call to try its numbers in this exact model before answering.
@@ -2687,6 +2775,7 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
     const tk = normTicker(state.values.ticker);
     if (!tk) { toast(t('aiNeedTicker')); byId('f-ticker').focus(); return; }
     if (mode === 'assume' && !(isNum(num('fcf')) && isNum(num('shares')))) { toast(t('aiNeedFigures')); return; }
+    if (planRoute()) { aiHandOff(mode, tk); return; }
     const prompt = aiDraftPrompt(mode, tk);
     ai.proposal = null; ai.built = null;
     await aiRun(async signal => {
@@ -2702,6 +2791,7 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
   async function aiBuild(raw) {
     const tk = normTicker(raw);
     if (!tk) { toast(t('aiNeedTicker')); byId('ai-tk').focus(); return; }
+    if (planRoute()) { aiHandOff('build', tk); byId('ai-tk').value = ''; return; }
     if (!ai.fn || ai.busy) return;
     const prompt = aiDraftPrompt('build', tk);
     ai.proposal = null;
@@ -2888,6 +2978,7 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
     toast(t('aiApplied', n));
   }
   async function aiReview() {
+    if (planRoute()) { aiHandOff('review'); return; }
     const prompt = ['You are reviewing a discounted cash flow (DCF) valuation an investor built in a web app. Today is ' + aiToday() + '. ' + aiWebLine(false), '', AI_GUIDE, '',
       'THE VALUATION (null = blank): ' + JSON.stringify(aiContext()), '',
       'Review it in 5 to 8 short bullet points, each starting with "• ": which inputs look off for this company and why, which assumption the result is most sensitive to, and what to double-check in the latest report. Mention specific numbers. If figures differ from what you know, say so, and note that your own knowledge may be older than the user\'s figures. Plain text only, no headings or tables. ' + aiLangLine()].join('\n');
@@ -2900,6 +2991,7 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
   }
   async function aiAsk(q) {
     q = String(q || '').trim();
+    if (q && planRoute()) { aiHandOff('ask', q); byId('ai-q').value = ''; return; }
     if (!q || !ai.fn || ai.busy) return;
     if (ai.outMode !== 'chat') ai.chat = [];
     ai.outMode = 'chat'; ai.outText = '';
@@ -2920,6 +3012,11 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
     byId('ai-build').addEventListener('submit', e => { e.preventDefault(); aiBuild(byId('ai-tk').value); });
     byId('ai-connect').addEventListener('submit', e => { e.preventDefault(); aiConnect(byId('ai-key').value); });
     byId('ai-disconnect').addEventListener('click', aiDisconnect);
+    byId('ai-route').addEventListener('click', e => { const b = e.target.closest('[data-route]'); if (b) setRoute(b.dataset.route); });
+    byId('ai-route').addEventListener('keydown', e => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault(); setRoute(ai.route === 'plan' ? 'key' : 'plan'); refocus('[data-route="' + ai.route + '"]');
+    });
     byId('sb-note').addEventListener('click', e => { if (e.target.closest('[data-ai-fill]')) aiBuild(state.values.ticker); });
     byId('ai-review').addEventListener('click', aiReview);
     byId('ai-ask').addEventListener('submit', e => { e.preventDefault(); aiAsk(byId('ai-q').value); });

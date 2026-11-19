@@ -6,7 +6,7 @@ A free calculator that estimates what one share of a company is worth, based on 
 
 ## Open it
 
-1. Download the calculator. Under **Releases** on this page, open the newest one and download the file ending in **.html**, for example **dcf-calculator-v1.2.0.html**. (The file called **index.html** in the list above is the same thing, always the newest version.)
+1. Download the calculator. Under **Releases** on this page, open the newest one and download the file ending in **.html**, for example **dcf-calculator-v1.3.0.html**. (The file called **index.html** in the list above is the same thing, always the newest version.)
 2. Double-click it. It opens in your web browser (Chrome, Safari, Edge or Firefox).
 
 There is nothing to install and no account to create. The calculator opens with a made-up example company so you can see how it works. Press **New** to start your own.
@@ -81,12 +81,14 @@ Use the **EN / 繁中** button at the top right to switch between English and Tr
 
 ## Ask Claude
 
-Claude, Anthropic's AI assistant, can do the research for you. There are two ways to use it:
+Claude, Anthropic's AI assistant, can do the research for you. There are two ways to ask, and both use your Claude plan, the same one you use on claude.ai, so there's no separate bill. Claude's own apps are the only place a Claude plan can be used: Anthropic doesn't let other apps, this calculator included, use it directly. So when you ask from the calculator, it opens a Claude chat for you.
 
-1. **Ask Claude in any Claude chat**, with your Claude account, just like Checkmate. You set this up once (see below).
-2. **The Ask Claude panel** inside the calculator, with your own Anthropic API key.
+1. **The Ask Claude panel** in the calculator, set to **Your Claude plan** (the default). Type a ticker and press **Build model**, or press **Suggest assumptions**, **Update figures + assumptions**, **Review my inputs** or **Ask**. A new Claude chat opens with your request filled in, and your stock's numbers are included. The request is also copied, so if the message box is empty, paste it and send. In the Claude desktop app, use the **Open in the Claude desktop app instead** link that appears.
+2. **Any Claude chat**, on claude.ai, in the desktop app or on your phone. Just ask, for example "Build a DCF model for VST and save it".
 
-### Use your Claude account, just like Checkmate
+Connect the calculator to Claude once (see below), and Claude saves the valuations it builds straight into your calculator. Without that, Claude answers in the chat and lists the figures for you to type in.
+
+### Connect the calculator to Claude, just like Checkmate
 
 Add the calculator to Claude once. Then you can ask Claude in any chat, on claude.ai, in the desktop app or in the phone app, to value a stock. Claude finds the company's latest results, runs this calculator's own maths and saves the valuation to your calculator. A few seconds later it appears there, marked **Saved by Claude**. This uses your Claude plan, so you don't need an API key.
 
@@ -115,9 +117,9 @@ Good to know:
 - When a new version of the connector comes out, the **Check** button tells you. Copy the code again, paste it over the old code in Cloudflare and press **Deploy**.
 - A valuation is only as good as its figures and guesses. Check Claude's numbers against the company's own report.
 
-### The Ask Claude panel, with your own API key
+### Or pay through an API key instead
 
-The panel inside the calculator can:
+If you'd rather Claude worked inside the calculator itself, switch the Ask Claude panel to **API key**. This is billed separately by Anthropic, not through your Claude plan. On API key, the panel can:
 
 - **Build a new model from a ticker:** type a ticker, such as NVDA or WTC.AX, and press **Build model**. Claude finds the company's latest figures, fills in every box and sets up the bear, base and bull outcomes. Everything it filled in is marked "Claude" until you change it, and **Undo** takes you back to what you had.
 - **Suggest assumptions** or **Update figures + assumptions** for the stock on screen. You see each suggested change and choose which ones to keep.
@@ -143,6 +145,7 @@ If you open the calculator inside claude.ai instead, it uses your claude.ai acco
 
 The version you have is shown at the bottom of the calculator.
 
+- **1.3.0** (19 November 2026): The Ask Claude panel now uses your Claude plan by default. It opens a Claude chat with your request, so you don't need an API key or a separate bill. The API key is still there as an option.
 - **1.2.0** (19 November 2026): Use Claude with your Claude account, just like Checkmate. Ask in any Claude chat and the valuation appears in your calculator. Your saves can also sync between your devices through your own Firebase project.
 - **1.1.0** (19 November 2026): Ask Claude now works in the downloaded calculator once you connect your own Anthropic API key, and Claude looks up the latest figures on the web.
 - **1.0.0** (19 November 2026): the first public version.
@@ -160,7 +163,7 @@ When a new version comes out, download it the same way. Your saved snapshots sta
 
 這是一個免費的股票估值計算機，依照公司未來十年預期帶來的現金，估算每一股的合理價。
 
-**開啟方式：** 在本頁的 **Releases** 下載最新版本的 **.html** 檔案（例如 **dcf-calculator-v1.2.0.html**），雙擊就會在瀏覽器（Chrome、Safari、Edge 或 Firefox）中開啟，不需要安裝或註冊。按右上角的 **EN / 繁中** 可以切換語言。版本號碼顯示在頁面最下方，目前是 1.2.0。
+**開啟方式：** 在本頁的 **Releases** 下載最新版本的 **.html** 檔案（例如 **dcf-calculator-v1.3.0.html**），雙擊就會在瀏覽器（Chrome、Safari、Edge 或 Firefox）中開啟，不需要安裝或註冊。按右上角的 **EN / 繁中** 可以切換語言。版本號碼顯示在頁面最下方，目前是 1.3.0。
 
 **使用步驟：**
 
@@ -184,7 +187,9 @@ When a new version comes out, download it the same way. Your saved snapshots sta
 
 你的密碼只會傳送到你自己的 Firebase 專案，不會給 Claude。在「同步與 Claude」按「中斷連接」可立即停止 Claude 的存取。
 
-**在計算機內詢問 Claude：** 輸入股票代號並按「建立模型」，Claude 會上網查詢最新數字、填好所有欄位，並設定三種情境。下載的版本中，這個面板需要你自己的 Anthropic API 金鑰：
+**在計算機內詢問 Claude：** 「詢問 Claude」面板預設使用 **你的 Claude 方案**（和 claude.ai 同一個方案，不會另外收費）。輸入股票代號並按「建立模型」，或按其他按鈕，計算機就會開一個新的 Claude 對話並帶入你的請求和數字。請求也會複製，如果訊息框是空的，貼上再傳送即可。已連接計算機的話，Claude 會把估值直接存進來；沒有連接的話，Claude 會在對話中列出數字讓你輸入。Anthropic 只允許在 Claude 自己的 app 中使用 Claude 方案，所以計算機會為你打開 Claude，而不是直接在頁面內使用。
+
+如果想讓 Claude 直接在計算機內工作，可以切換到 **API 金鑰**（由 Anthropic 另外收費）：
 
 1. 到 [console.anthropic.com](https://console.anthropic.com) 登入或註冊，並加值。
 2. 在 **API keys** 建立金鑰並複製。

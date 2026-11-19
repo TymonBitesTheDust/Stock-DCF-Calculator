@@ -51,7 +51,18 @@ const ok = (name) => { passed++; console.log('  ✓', name); };
       const res = await worker.fetch(new Request(q.url(), { method: q.method(), headers: await q.allHeaders(), body: ['GET', 'HEAD'].includes(q.method()) ? undefined : q.postData() }), { DCF_GOOGLE_API: fake.url });
       return route.fulfill({ status: res.status, headers: Object.fromEntries(res.headers), body: Buffer.from(await res.arrayBuffer()) });
     });
+    // A new Claude chat opened from the calculator lands here.
+    await ctx.route('https://claude.ai/**', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<title>Claude</title>' }));
     return { ctx, p };
+  }
+  // Presses a button that hands a request to Claude; returns the request the new chat was opened with.
+  async function handOff(d, click) {
+    const [chat] = await Promise.all([d.ctx.waitForEvent('page'), click()]);
+    await chat.waitForLoadState().catch(() => {});
+    const u = new URL(chat.url());
+    await chat.close();
+    assert.equal(u.origin + u.pathname, 'https://claude.ai/new');
+    return u.searchParams.get('q');
   }
   const txt = (p, sel) => p.textContent(sel).then((x) => (x || '').replace(/\s+/g, ' ').trim());
   const syncNow = async (p) => { await p.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); await p.waitForTimeout(700); };
@@ -67,8 +78,42 @@ const ok = (name) => { passed++; console.log('  ✓', name); };
   });
   await A.p.goto(PAGE); await A.p.waitForTimeout(400);
   assert.equal(await A.p.isVisible('#btn-sync'), true);
-  assert.equal(await A.p.isVisible('#ai-alt'), true);
+  assert.equal(await A.p.isVisible('#ai-plan-btn'), true, 'the plan note offers Sync & Claude');
   assert.match(await txt(A.p, '#store-text'), /this browser only/);
+  // ---- Ask Claude on your Claude plan, before the connector exists ----
+  assert.equal(await A.p.getAttribute('[data-route="plan"]', 'aria-checked'), 'true');
+  assert.equal(await A.p.isHidden('#ai-connect'), true, 'no API key box on the plan route');
+  assert.equal(await A.p.isEnabled('#ai-build-btn'), true, 'no key needed');
+  assert.match(await txt(A.p, '#ai-plan'), /list the figures for you to type in/);
+  await A.p.fill('#ai-tk', 'nvda');
+  let q = await handOff(A, () => A.p.click('#ai-build-btn'));
+  assert.match(q, /^Build a DCF valuation for NVDA that I can type into my DCF calculator/);
+  assert.match(q, /HOW THIS PAGE VALUES A STOCK/);
+  assert.match(await txt(A.p, '#ai-status-t'), /Opened a new Claude chat/);
+  assert.match(await A.p.getAttribute('#ai-desktop', 'href'), /^claude:\/\/claude\.ai\/new\?q=Build%20a%20DCF/);
+  q = await handOff(A, () => A.p.click('#ai-review'));
+  assert.match(q, /^Review my DCF valuation of EXMP/);
+  assert.match(q, /"fcf":2000/);
+  await A.p.fill('#ai-q', 'Is 10% right here?');
+  q = await handOff(A, () => A.p.press('#ai-q', 'Enter'));
+  assert.match(q, /^Is 10% right here\?/);
+  await A.p.click('[data-route="key"]');
+  assert.equal(await A.p.isVisible('#ai-connect'), true);
+  assert.equal(await A.p.isDisabled('#ai-build-btn'), true);
+  assert.equal(await A.p.evaluate(() => localStorage.getItem('dcf-ai-route-v1')), '"key"');
+  {
+    // A fresh page with that choice stored opens on it. (A reload right after the click can race the
+    // browser saving it, so this starts from the stored value instead.)
+    const C = await device('C');
+    await C.p.addInitScript(() => localStorage.setItem('dcf-ai-route-v1', '"key"'));
+    await C.p.goto(PAGE);
+    await C.p.waitForFunction(() => document.querySelector('[data-route="key"]').getAttribute('aria-checked') === 'true', null, { timeout: 5000 });
+    assert.equal(await C.p.isVisible('#ai-connect'), true);
+    await C.ctx.close();
+  }
+  await A.p.click('[data-route="plan"]');
+  ok('“Your Claude plan” is the default: requests open a Claude chat, no API key needed');
+
   await A.p.click('#btn-sync');
   assert.equal(await A.p.isVisible('#sy-modal'), true);
   assert.equal(await A.p.isVisible('#cl-need'), true);
@@ -152,7 +197,7 @@ const ok = (name) => { passed++; console.log('  ✓', name); };
   assert.ok(o.saved.id);
   await syncNow(A.p);
   assert.match(await txt(A.p, '#cl-status'), /Claude connected on .*me@example\.com/);
-  assert.match(await txt(A.p, '#ai-alt'), /Claude is connected to this calculator/);
+  assert.match(await txt(A.p, '#ai-plan'), /saved straight into it/);
   assert.equal(await A.p.isVisible('#cl-disconnect'), true);
   await A.p.click('#sy-close');
   assert.equal(await A.p.isHidden('#sy-modal'), true);
@@ -163,6 +208,18 @@ const ok = (name) => { passed++; console.log('  ✓', name); };
   assert.equal(await txt(A.p, '#tv-bear'), '$93.79'); assert.equal(await txt(A.p, '#tv-base'), '$150.14'); assert.equal(await txt(A.p, '#tv-bull'), '$236.85');
   assert.match(await txt(A.p, '.stock[data-ticker="VST"]'), /Saved by Claude.*figures from Q3 2026.*Q3 2026 results release/);
   ok('Claude’s save appears in the calculator with a toast; Open loads it with the same numbers');
+
+  // ---- with the connector, the plan route asks Claude to save into the calculator ----
+  await A.p.fill('#ai-tk', 'WTC.AX');
+  q = await handOff(A, () => A.p.click('#ai-build-btn'));
+  assert.match(q, /^Use the DCF Calculator connector to build a new DCF model for WTC\.AX/);
+  assert.match(q, /save-valuation/);
+  assert.match(await txt(A.p, '#ai-status-t'), /Opened a new Claude chat for WTC\.AX\. When Claude saves the valuation, it appears here/);
+  q = await handOff(A, () => A.p.click('#ai-draft-all'));
+  assert.match(q, /^Use the DCF Calculator connector to update my DCF valuation of VST/);
+  assert.match(q, /"fcf":4325/);
+  assert.match(await txt(A.p, '#ai-build-hint'), /saves the model here/);
+  ok('with the connector, Build and Update ask Claude to save the valuation into the calculator');
   if (SHOTS) await A.p.screenshot({ path: path.join(SHOTS, 'claude-saved.png') });
 
   // ---- device B: the setup code, then a delete that reaches device A ----
@@ -206,6 +263,7 @@ const ok = (name) => { passed++; console.log('  ✓', name); };
   await A.p.click('#sy-close');
   await A.p.click('[data-lang="zh"]');
   await A.p.click('#btn-sync');
+  assert.equal(await txt(A.p, '[data-route="plan"]'), '你的 Claude 方案');
   assert.equal(await txt(A.p, '#sy-title'), '同步與 Claude');
   assert.match(await txt(A.p, '#cl-h'), /用你的 Claude 帳戶使用 Claude/);
   await A.p.setViewportSize({ width: 390, height: 844 });

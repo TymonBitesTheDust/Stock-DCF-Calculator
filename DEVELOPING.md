@@ -2,7 +2,7 @@
 
 [README.md](README.md) is the guide for people using the calculator. This file is for whoever changes it next.
 
-**Current version:** calculator 1.2.0, Claude connector 1.0.0.
+**Current version:** calculator 1.3.0, Claude connector 1.0.0.
 
 ## Layout
 
@@ -47,6 +47,13 @@ its own token prefixes (`dca_`, `dcr_`, `dcc_`, `dcq_`) and its own collection.
   fields it changes (`updateMask`), and puts `secret` into the connector code it hands out between
   `/*DCF_CONFIG*/` and `/*END_DCF_CONFIG*/`. Every tool call checks that `gen` still matches the token's,
   so **Disconnect** (a new `gen`) cuts Claude off at once. The sign-in page refuses accounts without the record.
+- **Ask Claude in the downloaded page** has two routes (`ai.route`, kept in `dcf-ai-route-v1`). **Your Claude plan**
+  (the default) builds a prompt (`aiPlanPrompt`) and opens `https://claude.ai/new?q=…` in a new tab, copying the prompt
+  too (the web `q` prefill isn't officially documented) and offering the documented desktop link `claude://claude.ai/new?q=…`.
+  When the connector is connected, the prompt asks Claude to use `run-dcf` and `save-valuation`, and sync brings the save back.
+  A Claude plan can't be used by the page itself: Anthropic doesn't permit other apps to route requests through
+  Free, Pro or Max credentials. **API key** is the 1.1.0 behaviour (the viewer's own Anthropic API key, billed separately).
+  Inside claude.ai the panel uses the viewer's account through `sample`, as before.
 - **Tools** read the user's whole `dcf` collection once per call (a few documents per stock), turn Claude's
   numbers into the same text the boxes would hold (`DCF.fmtInput`), and evaluate with the core. `startFrom:
   "latest"` loads the newest save with `DCF.fromSnapshot` and changes only what Claude passes.
