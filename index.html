@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="version" content="1.3.0">
+<meta name="version" content="1.4.0">
 <meta name="description" content="A free stock valuation calculator: estimate what a share is worth from the cash the company should bring in over the next ten years.">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>DCF現金流估值模型</title>
@@ -428,6 +428,11 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
 .ai-plan { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--blue-soft); font-size: 13px; color: var(--ink); }
 .ai-plan .link { margin-left: 4px; }
 .ai-status a { color: var(--blue); }
+.ai-paste { display: grid; gap: 6px; padding: 12px 14px; border-radius: 8px; background: var(--blue-soft); }
+.ai-paste label { font-weight: 600; font-size: 13px; display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; }
+.ai-paste .hint { margin: 0; }
+.ai-paste textarea { width: 100%; box-sizing: border-box; font: 12.5px/1.4 var(--f-num); padding: 8px 10px; border: 1px solid var(--rule-strong); border-radius: 8px; background: var(--sheet); color: var(--ink); resize: vertical; }
+.ai-paste textarea:focus { outline: 2px solid var(--blue); outline-offset: 1px; }
 .e-by { font-size: 11px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
 .e-by .tag-claude { font-weight: 600; color: var(--blue); background: var(--blue-soft); border-radius: 4px; padding: 0 5px; }
 .e-note { margin: 0; font-size: 11.5px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
@@ -527,6 +532,13 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
           <button type="submit" class="btn primary" id="ai-send" data-t="aiSend" disabled>Ask</button>
         </form>
         <p class="ai-status" role="status" aria-live="polite"><span id="ai-status-t"></span><a id="ai-desktop" data-t="aiPlanDesktop" hidden></a><button type="button" class="link" id="ai-stop" data-t="aiStop" hidden>Stop</button><button type="button" class="link" id="ai-clear" data-t="aiClear" hidden>Clear chat</button></p>
+        <form class="ai-paste" id="ai-paste" hidden>
+          <label for="ai-paste-t" data-tb="aiPasteL">Paste Claude’s answer</label>
+          <p class="hint" id="ai-paste-hint"></p>
+          <textarea id="ai-paste-t" rows="3" spellcheck="false" autocomplete="off" placeholder="```json  { &quot;company&quot;: … }  ```"></textarea>
+          <p class="msg err" id="ai-paste-err" role="alert" hidden></p>
+          <div class="ai-btns"><button type="submit" class="btn primary" id="ai-paste-btn" data-t="aiPasteBtn">Fill in</button><button type="button" class="btn ghost" id="ai-paste-x" data-t="cancel">Cancel</button></div>
+        </form>
         <div class="ai-out" id="ai-out" hidden></div>
         <div class="ai-prop" id="ai-prop" hidden></div>
       </section>
@@ -1243,8 +1255,8 @@ const DCF = (function () {
     syTitle: ['Sync & Claude', '同步與 Claude'],
     syClose: ['Close', '關閉'],
     sySyncH: ['1 · Sync your saves', '1 · 同步你的紀錄'],
-    syIntro: ['Keep your saved stocks on all your devices through a free Firebase project that only you own. If you use Checkmate, you can use the same Firebase project and the same account.',
-      '透過一個只屬於你的免費 Firebase 專案，讓儲存的股票出現在你所有裝置上。如果你有用 Checkmate，可以用同一個 Firebase 專案和同一個帳戶。'],
+    syIntro: ['Optional. Keep your saved stocks on all your devices through a free Firebase project that only you own. If you use Checkmate, you can use the same Firebase project and the same account.',
+      '選用。透過一個只屬於你的免費 Firebase 專案，讓儲存的股票出現在你所有裝置上。如果你有用 Checkmate，可以用同一個 Firebase 專案和同一個帳戶。'],
     syCfgL: ['Firebase settings or setup code', 'Firebase 設定或設定碼'],
     syCfgHelp: ['First time? Paste the firebaseConfig block from your Firebase project (steps below). Already set up on another device, or in Checkmate? Paste the setup code shown there.',
       '第一次使用？貼上 Firebase 專案的 firebaseConfig 區塊（步驟在下面）。已在另一部裝置或 Checkmate 設定好？貼上那裡顯示的設定碼。'],
@@ -1308,19 +1320,28 @@ const DCF = (function () {
     aiIntroPlan: ['Type a ticker to build a new model, or ask Claude to update, check or explain the stock on screen. Each request opens a new Claude chat and uses your Claude plan, with no separate bill. Claude can look up the latest figures on the web there.',
       '輸入股票代號建立新模型，或請 Claude 更新、檢查或解釋畫面上的股票。每個請求都會開一個新的 Claude 對話，使用你的 Claude 方案，不會另外收費。Claude 在那裡可以上網查最新數字。'],
     aiPlanOn: ['Claude is connected to this calculator, so the valuations it builds are saved straight into it and appear here within seconds.', 'Claude 已連接到這個計算機，它建立的估值會直接存進來，幾秒內就會出現在這裡。'],
-    aiPlanOff: ['Claude will answer in the chat and list the figures for you to type in. To have its valuations saved straight into this calculator, connect the calculator to Claude once.', 'Claude 會在對話中回答，並列出數字讓你輸入。如想讓估值直接存進這個計算機，請把計算機連接到 Claude 一次。'],
-    aiPlanSetup: ['Set up Sync & Claude', '設定同步與 Claude'],
+    aiPlanOff: ['Nothing to set up: Claude answers in the chat, then you paste its answer back here and the calculator fills everything in. Optional: connect the calculator to Claude so it saves valuations here by itself, with free Firebase and Cloudflare accounts.', '不需要任何設定：Claude 在對話中回答後，把答案貼回這裡，計算機就會填好所有欄位。選用：把計算機連接到 Claude，讓它直接把估值存到這裡（需要免費的 Firebase 和 Cloudflare 帳戶）。'],
+    aiPlanSetup: ['How to connect', '如何連接'],
+    aiPlanSentPaste: [tk => 'Opened a new Claude chat for ' + tk + '. When Claude has answered, copy its answer and paste it in the box below. The request is also copied: if the message box is empty, paste it and send.', tk => '已為 ' + tk + ' 開啟新的 Claude 對話。Claude 回答後，請複製答案並貼到下面的方格。請求也已複製：如果訊息框是空的，請貼上再傳送。'],
+    aiPasteL: ['Paste Claude’s answer', '貼上 Claude 的答案'],
+    aiPasteHintBuild: [tk => 'Copy Claude’s whole answer for ' + tk + ', or just the code block at the end, and paste it here. The calculator opens it as a new model, and Undo takes you back.', tk => '複製 Claude 對 ' + tk + ' 的完整答案，或只複製最後的程式碼區塊，貼到這裡。計算機會把它開成新模型，按「復原」可以回到原本的內容。'],
+    aiPasteHintUpdate: [tk => 'Copy Claude’s whole answer for ' + tk + ', or just the code block at the end, and paste it here. You’ll see each suggested change and choose which to keep.', tk => '複製 Claude 對 ' + tk + ' 的完整答案，或只複製最後的程式碼區塊，貼到這裡。你會看到每項建議的更改，並選擇要保留哪些。'],
+    aiPasteBtn: ['Fill in', '填入'],
+    aiPasteEmpty: ['Paste Claude’s answer first.', '請先貼上 Claude 的答案。'],
+    aiPasteBad: ['Couldn’t find the calculator’s figures in that. Copy Claude’s whole answer, or the code block at the end of it. If there’s no code block, ask Claude to “give me the JSON code block for the calculator”.', '找不到計算機需要的數字。請複製 Claude 的完整答案，或答案最後的程式碼區塊。如果沒有程式碼區塊，請請 Claude「給我計算機用的 JSON 程式碼區塊」。'],
+    aiPasteReview: ['Here’s what Claude suggests. Tick the changes you want and press Apply.', '這是 Claude 的建議。勾選你要的更改，再按「套用」。'],
+    aiAsOfChat: [d => 'Figures as of ' + d + ', from Claude. Check them against the latest report before you save.', d => '數字截至 ' + d + '，來自 Claude。儲存前請對照最新財報。'],
     aiBuildHintPlan: ['Claude finds the company and its latest figures, sets up all three cases and saves the model here. Add .AX for the ASX, .TW for Taiwan, .HK for Hong Kong.', 'Claude 會找出公司和最新數字、設定三個情境，並把模型存到這裡。澳洲股票加 .AX，台股加 .TW，港股加 .HK。'],
-    aiBuildHintPlanOff: ['Claude finds the company and its latest figures and sets up all three cases in the chat, for you to type in. Add .AX for the ASX, .TW for Taiwan, .HK for Hong Kong.', 'Claude 會在對話中找出公司和最新數字並設定三個情境，讓你輸入。澳洲股票加 .AX，台股加 .TW，港股加 .HK。'],
+    aiBuildHintPlanOff: ['Claude finds the company and its latest figures and sets up all three cases. Paste its answer back here and the whole model is filled in. Add .AX for the ASX, .TW for Taiwan, .HK for Hong Kong.', 'Claude 會找出公司和最新數字並設定三個情境。把它的答案貼回這裡，整個模型就會填好。澳洲股票加 .AX，台股加 .TW，港股加 .HK。'],
     aiPlanSent: ['Opened a new Claude chat with your request. It’s also copied: if the message box is empty, paste it and send.', '已開啟新的 Claude 對話並帶入你的請求，也已複製：如果訊息框是空的，請貼上再傳送。'],
     aiPlanSentSave: [tk => 'Opened a new Claude chat for ' + tk + '. When Claude saves the valuation, it appears here. The request is also copied: if the message box is empty, paste it and send.', tk => '已為 ' + tk + ' 開啟新的 Claude 對話。Claude 儲存估值後，就會出現在這裡。請求也已複製：如果訊息框是空的，請貼上再傳送。'],
     aiPlanDesktop: ['Open in the Claude desktop app instead', '改用 Claude 桌面 app 開啟'],
     aiAltOn: ['Claude is connected to this calculator through your Claude account. Ask in any Claude chat, for example “Build a DCF model for NVDA and save it”, and the valuation appears here.', 'Claude 已透過你的 Claude 帳戶連接到這個計算機。在任何 Claude 對話中直接問，例如「幫 NVDA 建立 DCF 模型並儲存」，估值就會出現在這裡。'],
     aiAltOnBtn: ['Sync & Claude', '同步與 Claude'],
-    clH: ['2 · Use Claude with your Claude account', '2 · 用你的 Claude 帳戶使用 Claude'],
-    clIntro: ['Just like Checkmate: add the calculator to Claude once, then ask in any Claude chat, on the web, in the desktop app or on your phone. For example, “Build a DCF model for VST and save it”. Claude looks up the latest figures, runs this calculator’s own maths and saves the valuation here. It uses your Claude plan, so you don’t need an API key.',
-      '和 Checkmate 一樣：把計算機加到 Claude 一次，之後在任何 Claude 對話中（網頁、桌面 app 或手機）直接問，例如「幫 VST 建立 DCF 模型並儲存」。Claude 會查最新數字、用這個計算機本身的公式計算，並把估值存到這裡。它使用你的 Claude 方案，不需要 API 金鑰。'],
-    clNeed: ['Turn on sync above first. Claude saves valuations through it.', '請先開啟上面的同步，Claude 會透過它儲存估值。'],
+    clH: ['2 · Let Claude save into the calculator', '2 · 讓 Claude 直接存進計算機'],
+    clIntro: ['Optional: you can already ask Claude from the Ask Claude panel without any of this, and paste its answer back. Just like Checkmate, add the calculator to Claude once, then ask in any Claude chat, on the web, in the desktop app or on your phone. For example, “Build a DCF model for VST and save it”. Claude looks up the latest figures, runs this calculator’s own maths and saves the valuation here. It uses your Claude plan, so you don’t need an API key.',
+      '選用：不設定這些，你也可以在「詢問 Claude」面板問 Claude，再把答案貼回來。和 Checkmate 一樣，把計算機加到 Claude 一次，之後在任何 Claude 對話中（網頁、桌面 app 或手機）直接問，例如「幫 VST 建立 DCF 模型並儲存」。Claude 會查最新數字、用這個計算機本身的公式計算，並把估值存到這裡。它使用你的 Claude 方案，不需要 API 金鑰。'],
+    clNeed: ['This part needs sync, so turn it on above first: Claude saves valuations through it.', '這部分需要同步，請先開啟上面的同步：Claude 會透過它儲存估值。'],
     clStep1: ['<b>Copy your connector code.</b> It already holds your Firebase project details and a private key made just for you, so don’t share it.', '<b>複製你的連接器程式碼。</b>它已包含你的 Firebase 專案資料和專為你產生的私密金鑰，請不要分享。'],
     clCopy: ['Copy connector code', '複製連接器程式碼'],
     clSave: ['Save as file', '另存為檔案'],
@@ -1395,7 +1416,7 @@ const DCF = (function () {
   const LS_DRAFT_OLD = 'dcf-draft-v1';
   const LS_LANG = 'dcf-lang-v1';
   const MINUS = '−';
-  const APP_VERSION = '1.3.0';
+  const APP_VERSION = '1.4.0';
 
   /* ================= helpers ================= */
   const byId = id => document.getElementById(id);
@@ -2664,7 +2685,7 @@ const DCF = (function () {
   /* ================= Claude assistant ================= */
   // Runs on the viewer's own Claude account through the `sample` capability. Claude can't browse,
   // so everything it proposes is shown as a reviewable list and applied only when the viewer chooses.
-  const ai = { mode: window.claude && typeof window.claude.use === 'function' ? 'claude' : 'key', route: 'plan', handedOff: false, fn: null, tools: false, state: 'pending', offKey: '', statusKey: '', statusArg: null, busy: false, ctl: null, proposal: null, built: null, chat: [], outMode: null, outText: '' };
+  const ai = { mode: window.claude && typeof window.claude.use === 'function' ? 'claude' : 'key', route: 'plan', handedOff: false, paste: null, pasteErr: '', fn: null, tools: false, state: 'pending', offKey: '', statusKey: '', statusArg: null, busy: false, ctl: null, proposal: null, built: null, chat: [], outMode: null, outText: '' };
   const AI_CUR = CURRENCIES.map(c => c[0]);
   const AI_UNIT = { thousands: '1e3', millions: '1e6', billions: '1e9' };
   const AI_SUNIT = { single: '1', thousands: '1e3', millions: '1e6', billions: '1e9' };
@@ -2838,6 +2859,8 @@ const DCF = (function () {
   async function initAI() {
     if (ai.mode === 'key') {
       ai.route = lsGet(LS_ROUTE) === 'key' ? 'key' : 'plan';
+      const pp = lsGet(LS_PASTE);
+      ai.paste = pp && typeof pp === 'object' && pp.mode ? pp : null;
       api.key = lsGet(LS_KEY) || '';
       if (api.key) { ai.fn = makeApiSample(); ai.tools = true; ai.state = 'ready'; } else ai.state = 'connect';
       renderAI();
@@ -2870,6 +2893,12 @@ const DCF = (function () {
     const pb = byId('ai-plan-btn'); pb.hidden = !plan || pc || !(typeof sync !== 'undefined' && sync.avail); pb.textContent = t('aiPlanSetup');
     byId('ai-build-hint').textContent = t(plan ? (pc ? 'aiBuildHintPlan' : 'aiBuildHintPlanOff') : 'aiBuildHint');
     byId('ai-desktop').hidden = !(plan && ai.handedOff);
+    const showPaste = plan && !pc && !!ai.paste;
+    byId('ai-paste').hidden = !showPaste;
+    if (showPaste) {
+      byId('ai-paste-hint').textContent = t(ai.paste.mode === 'build' ? 'aiPasteHintBuild' : 'aiPasteHintUpdate', ai.paste.tk || '');
+      const pe = byId('ai-paste-err'); pe.textContent = ai.pasteErr ? t(ai.pasteErr) : ''; pe.hidden = !ai.pasteErr;
+    }
     byId('ai-connect').hidden = !(keyMode && !plan && ai.state === 'connect');
     byId('ai-conn').hidden = !(keyMode && !plan && ai.state === 'ready');
     if (keyMode) {
@@ -2945,6 +2974,7 @@ const DCF = (function () {
     const ctx = kind === 'build' ? '' : JSON.stringify(aiContext());
     const lang = aiLangLine();
     const saveLine = 'then save it with save-valuation, with asOf set to the period of the figures and a short note on your sources and the three cases. Finish with the fair value, margin of safety and signal in a few lines.';
+    if (!conn && (kind === 'build' || kind === 'all' || kind === 'assume')) return aiDraftPrompt(kind, tk, true);
     if (kind === 'build') {
       return conn
         ? 'Use the DCF Calculator connector to build a new DCF model for ' + tk + '. First work out which company and listing the ticker means, then look up its latest reported results and current share price on the web, preferring the company\'s own filings and releases. Try your inputs with run-dcf, adjust anything implausible, ' + saveLine + ' ' + lang
@@ -2973,10 +3003,36 @@ const DCF = (function () {
     const d = byId('ai-desktop');
     d.href = 'claude://claude.ai/new?q=' + encodeURIComponent(prompt);
     ai.handedOff = true;
-    const saves = planConnected() && (kind === 'build' || kind === 'all' || kind === 'assume');
-    ai.statusKey = saves ? 'aiPlanSentSave' : 'aiPlanSent';
-    ai.statusArg = saves ? normTicker(kind === 'build' ? arg : state.values.ticker) : null;
+    const makes = kind === 'build' || kind === 'all' || kind === 'assume';
+    const saves = makes && planConnected();
+    const tk = normTicker(kind === 'build' ? arg : state.values.ticker);
+    ai.statusKey = saves ? 'aiPlanSentSave' : makes ? 'aiPlanSentPaste' : 'aiPlanSent';
+    ai.statusArg = makes ? tk : null;
+    // Without the connector, Claude's answer comes back by pasting it into the box this opens.
+    if (makes && !saves) { ai.paste = { mode: kind, tk: tk }; ai.pasteErr = ''; lsSet(LS_PASTE, ai.paste); }
     renderAI();
+  }
+  const LS_PASTE = 'dcf-ai-paste-v1';
+  // Claude's reply, pasted back: the JSON at its end fills in a new model (Build) or a reviewable list of changes.
+  function aiPasteApply() {
+    const raw = byId('ai-paste-t').value;
+    const p = ai.paste || { mode: 'build', tk: normTicker(state.values.ticker) };
+    ai.pasteErr = '';
+    if (!raw.trim()) { ai.pasteErr = 'aiPasteEmpty'; renderAI(); byId('ai-paste-t').focus(); return; }
+    const data = parseLooseJson(raw);
+    try {
+      if (!data || typeof data !== 'object' || !data.cases || typeof data.cases !== 'object') throw new Error('no figures');
+      if (p.mode === 'build') aiBuildApply(p.tk || normTicker(state.values.ticker), data);
+      else { ai.built = null; aiMakeProposal(data, p.mode); }
+    } catch (e) {
+      ai.pasteErr = 'aiPasteBad'; renderAI(); byId('ai-paste-t').focus(); return;
+    }
+    byId('ai-paste-t').value = '';
+    ai.paste = null; ai.statusKey = p.mode === 'build' ? '' : 'aiPasteReview'; ai.statusArg = null; ai.handedOff = false;
+    lsSet(LS_PASTE, null);
+    renderAI();
+    const box = byId('ai-prop');
+    if (!box.hidden) try { box.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'nearest' }); } catch (e) { /* ignore */ }
   }
   function setRoute(r) {
     ai.route = r === 'key' ? 'key' : 'plan';
@@ -3033,7 +3089,8 @@ const DCF = (function () {
   }
 
   // mode: 'assume' (keep figures), 'all' (refresh the stock on screen, reviewed as a checklist), 'build' (new model from a ticker)
-  function aiDraftPrompt(mode, tk) {
+  // chat: written for a Claude chat the viewer pastes the answer back from (no page tools; Claude can search there).
+  function aiDraftPrompt(mode, tk, chat) {
     const fresh = mode === 'build', ctx = fresh ? null : aiContext();
     const caseShape = '{"g1": number, "g2": number, "rg1": number, "rg2": number, "tm": number, "tmYear": number, "tg": number, "w": number}';
     const shape = '{"company": string, "asOf": string, "method": "fcf" | "margin", ' +
@@ -3047,7 +3104,7 @@ const DCF = (function () {
         ? 'Suggest the company figures, the settings, the method, the discount rate and the assumptions for all three cases.'
         : 'Keep the user\'s company figures and settings exactly as they are (set "facts" and "settings" to null). Suggest the method, the discount rate and the assumptions for all three cases that fit this company and these figures.';
     return [
-      'You are helping an investor fill in a discounted cash flow (DCF) valuation for one stock in a web app. Today is ' + aiToday() + '. ' + aiWebLine(true),
+      'You are helping an investor fill in a discounted cash flow (DCF) valuation for one stock in a web app. Today is ' + aiToday() + '. ' + (chat ? 'Search the web if you can: look up the company\'s latest reported results, guidance and current share price, preferring its own filings and releases, and give the period of your figures in "asOf".' : aiWebLine(true)),
       '', AI_GUIDE, '',
       'STOCK: ' + tk + (ctx && ctx.company ? ' (' + ctx.company + ')' : ''),
       fresh ? 'CURRENT PAGE INPUTS: none yet (a new model).' : 'CURRENT PAGE INPUTS (null = blank): ' + JSON.stringify(ctx), '',
@@ -3057,10 +3114,12 @@ const DCF = (function () {
       '- Amounts use the amount unit and report currency in "settings"; the share price and dividend use the share price currency. If the company reports in another currency than its shares trade in, set reportCurrency and fxRate (share-price-currency units per one report-currency unit).',
       '- Choose "margin" when today\'s FCF margin is far from normal (a turnaround, an acquisition, a heavy investment year); otherwise "fcf". Fill every case key anyway so the user can switch methods.',
       '- The base case is the most likely path; bear and bull are plausible, not extreme. Terminal growth is usually 2 to 3. Use weights 25/50/25 unless you have a reason.',
-      ai.tools ? '- Before answering, call the evaluate_cases tool with your ' + (fresh ? 'settings, facts, ' : '') + 'method, discount rate and cases, and adjust anything that gives an implausible fair value.' : null,
+      ai.tools && !chat ? '- Before answering, call the evaluate_cases tool with your ' + (fresh ? 'settings, facts, ' : '') + 'method, discount rate and cases, and adjust anything that gives an implausible fair value.' : null,
       '- In "warnings", list what the user must check: figures that may be out of date, preferred stock, one-off items, upcoming results.',
       '- ' + aiLangLine() + ' Keep each note to one or two short sentences.', '',
-      'Reply with only one JSON object in this shape: ' + shape,
+      chat
+        ? 'Start your reply with a few short lines: the fair value per share you expect in each case, and what to double-check. Then end it with one JSON object in a ```json code block, in exactly this shape, for the user to copy and paste into the calculator: ' + shape
+        : 'Reply with only one JSON object in this shape: ' + shape,
     ].filter(x => x !== null).join('\n');
   }
 
@@ -3146,7 +3205,7 @@ const DCF = (function () {
     const b = ai.built, ctx = { cur: cur(), rcur: rcur(), unit: unitInfo().short, shares: shareInfo().label[LI()] };
     box.hidden = false;
     let h = '<div class="ai-prop-h"><h3>' + esc(t('aiBuiltH', b.ticker)) + '</h3>' + (b.company ? '<span class="muted">' + esc(b.company) + '</span>' : '') + '</div>';
-    h += '<p class="hint">' + esc(t(aiWebOn() ? 'aiAsOfWeb' : 'aiAsOf', b.asOf || '?')) + ' ' + esc(t('aiBuiltNote')) + '</p>';
+    h += '<p class="hint">' + esc(t(planRoute() ? 'aiAsOfChat' : aiWebOn() ? 'aiAsOfWeb' : 'aiAsOf', b.asOf || '?')) + ' ' + esc(t('aiBuiltNote')) + '</p>';
     if (b.warnings.length) h += '<ul class="ai-warn">' + b.warnings.map(w => '<li>' + esc(w) + '</li>').join('') + '</ul>';
     h += '<details class="ai-filled-list"><summary>' + esc(t('aiShowFilled', b.rows.length)) + '</summary><div class="table-wrap"><table class="ai-t"><tbody>';
     aiGroups(b.notes || {}).forEach(g => {
@@ -3236,7 +3295,7 @@ const DCF = (function () {
     if (!p) { box.hidden = true; box.textContent = ''; return; }
     box.hidden = false;
     let h = '<div class="ai-prop-h"><h3>' + esc(t('aiPropH')) + '</h3>' + (p.company ? '<span class="muted">' + esc(p.company) + '</span>' : '') + '</div>';
-    h += '<p class="hint">' + esc(p.mode === 'all' ? t(aiWebOn() ? 'aiAsOfWeb' : 'aiAsOf', p.asOf || '?') : t('aiAssumpOnly')) + '</p>';
+    h += '<p class="hint">' + esc(p.mode === 'all' ? t(planRoute() ? 'aiAsOfChat' : aiWebOn() ? 'aiAsOfWeb' : 'aiAsOf', p.asOf || '?') : t('aiAssumpOnly')) + '</p>';
     if (p.warnings.length) h += '<ul class="ai-warn">' + p.warnings.map(w => '<li>' + esc(w) + '</li>').join('') + '</ul>';
     if (!p.rows.length) h += '<p>' + esc(t('aiNoChanges')) + '</p>';
     else {
@@ -3306,6 +3365,8 @@ const DCF = (function () {
     byId('ai-connect').addEventListener('submit', e => { e.preventDefault(); aiConnect(byId('ai-key').value); });
     byId('ai-disconnect').addEventListener('click', aiDisconnect);
     byId('ai-route').addEventListener('click', e => { const b = e.target.closest('[data-route]'); if (b) setRoute(b.dataset.route); });
+    byId('ai-paste').addEventListener('submit', e => { e.preventDefault(); aiPasteApply(); });
+    byId('ai-paste-x').addEventListener('click', () => { ai.paste = null; ai.pasteErr = ''; lsSet(LS_PASTE, null); byId('ai-paste-t').value = ''; ai.statusKey = ''; renderAI(); });
     byId('ai-route').addEventListener('keydown', e => {
       if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
       e.preventDefault(); setRoute(ai.route === 'plan' ? 'key' : 'plan'); refocus('[data-route="' + ai.route + '"]');

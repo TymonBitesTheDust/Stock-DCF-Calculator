@@ -2,7 +2,7 @@
 
 [README.md](README.md) is the guide for people using the calculator. This file is for whoever changes it next.
 
-**Current version:** calculator 1.3.0, Claude connector 1.0.0.
+**Current version:** calculator 1.4.0, Claude connector 1.0.0.
 
 ## Layout
 
@@ -51,6 +51,9 @@ its own token prefixes (`dca_`, `dcr_`, `dcc_`, `dcq_`) and its own collection.
   (the default) builds a prompt (`aiPlanPrompt`) and opens `https://claude.ai/new?q=…` in a new tab, copying the prompt
   too (the web `q` prefill isn't officially documented) and offering the documented desktop link `claude://claude.ai/new?q=…`.
   When the connector is connected, the prompt asks Claude to use `run-dcf` and `save-valuation`, and sync brings the save back.
+  Without it (no Firebase or Cloudflare needed), Build and Update use `aiDraftPrompt(mode, tk, true)`, which asks Claude to end its
+  reply with the same JSON the API-key route gets, in a code block; the viewer pastes it into **Paste Claude's answer**
+  (`aiPasteApply`, read with `parseLooseJson`), and it goes through `aiBuildApply` or `aiMakeProposal` like an API answer.
   A Claude plan can't be used by the page itself: Anthropic doesn't permit other apps to route requests through
   Free, Pro or Max credentials. **API key** is the 1.1.0 behaviour (the viewer's own Anthropic API key, billed separately).
   Inside claude.ai the panel uses the viewer's account through `sample`, as before.
