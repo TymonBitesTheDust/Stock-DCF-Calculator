@@ -12,6 +12,9 @@ const { pathToFileURL } = require('node:url');
 const { createFakeGoogle } = require('./fake-google.cjs');
 
 const PAGE = 'file://' + path.resolve(__dirname, '../index.html');
+const VERSION = /const APP_VERSION = '([0-9.]+)'/.exec(fs.readFileSync(path.resolve(__dirname, '../src/app.html'), 'utf8'))[1];
+// Version B of "Your AI plan" → Claude (Claude builds the calculator in a chat); index.html is version A.
+const PAGE_B = 'file://' + path.resolve(__dirname, `../dist/dcf-calculator-v${VERSION}-B-claude-builds-it.html`);
 const SHOTS = process.env.SHOTS || '';
 const FIREBASE_CONFIG = `const firebaseConfig = {
   apiKey: "AIzaTest",
@@ -52,17 +55,18 @@ const ok = (name) => { passed++; console.log('  ✓', name); };
       return route.fulfill({ status: res.status, headers: Object.fromEntries(res.headers), body: Buffer.from(await res.arrayBuffer()) });
     });
     // A new Claude chat opened from the calculator lands here.
-    await ctx.route('https://claude.ai/**', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<title>Claude</title>' }));
+    for (const site of ['https://claude.ai/**', 'https://chatgpt.com/**', 'https://gemini.google.com/**']) {
+      await ctx.route(site, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<title>chat</title>' }));
+    }
     return { ctx, p };
   }
-  // Presses a button that hands a request to Claude; returns the request the new chat was opened with.
+  // Presses a button that hands a request to an AI chat; returns where the chat opened and the request it carried.
   async function handOff(d, click) {
     const [chat] = await Promise.all([d.ctx.waitForEvent('page'), click()]);
     await chat.waitForLoadState().catch(() => {});
     const u = new URL(chat.url());
     await chat.close();
-    assert.equal(u.origin + u.pathname, 'https://claude.ai/new');
-    return u.searchParams.get('q');
+    return { href: u.origin + u.pathname, q: u.searchParams.get('q') };
   }
   const txt = (p, sel) => p.textContent(sel).then((x) => (x || '').replace(/\s+/g, ' ').trim());
   const syncNow = async (p) => { await p.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); await p.waitForTimeout(700); };
@@ -78,25 +82,56 @@ const ok = (name) => { passed++; console.log('  ✓', name); };
   });
   await A.p.goto(PAGE); await A.p.waitForTimeout(400);
   assert.equal(await A.p.isVisible('#btn-sync'), true);
-  assert.equal(await A.p.isVisible('#ai-plan-btn'), true, 'the plan note offers Sync & Claude');
   assert.match(await txt(A.p, '#store-text'), /this browser only/);
-  // ---- Ask Claude on your Claude plan, before the connector exists ----
+  // ---- "Your AI plan": pick an AI; Claude goes to the calculator inside claude.ai ----
   assert.equal(await A.p.getAttribute('[data-route="plan"]', 'aria-checked'), 'true');
   assert.equal(await A.p.isHidden('#ai-connect'), true, 'no API key box on the plan route');
-  assert.equal(await A.p.isEnabled('#ai-build-btn'), true, 'no key needed');
-  assert.match(await txt(A.p, '#ai-plan'), /list the figures for you to type in/);
+  assert.equal(await A.p.getAttribute('[data-chat="claude"]', 'aria-checked'), 'true', 'Claude is picked first');
+  assert.equal(await A.p.isVisible('#ai-claude'), true);
+  assert.equal(await A.p.isHidden('#ai-build'), true, 'with Claude, the work happens in the calculator inside claude.ai');
+  assert.equal(await A.p.getAttribute('#ai-claude-open', 'href'), 'https://claude.ai/artifact/3gnMsv2YenEQw9hJy7bZpZ');
+  assert.equal(await A.p.isHidden('#ai-claude-build'), true);
+  assert.match(await txt(A.p, '#ai-claude'), /only use your Claude plan inside claude\.ai/);
+  ok('version A: Claude opens the shared calculator inside claude.ai');
+  {
+    const D = await device('D');
+    await D.p.goto(PAGE_B); await D.p.waitForTimeout(300);
+    assert.equal(await D.p.isHidden('#ai-claude-open'), true);
+    const b = await handOff(D, () => D.p.click('#ai-claude-build'));
+    assert.equal(b.href, 'https://claude.ai/new');
+    assert.match(b.q, /^Please build me a DCF stock valuation calculator as an artifact/);
+    assert.match(b.q, /HOW THIS PAGE VALUES A STOCK/);
+    assert.match(b.q, /Nick 美股咖啡館/);
+    assert.ok(b.q.length < 8000, 'the request fits in a link: ' + b.q.length);
+    assert.match(await txt(D.p, '#ai-status-t'), /asking Claude to build the calculator/);
+    assert.match(await D.p.getAttribute('#ai-desktop', 'href'), /^claude:\/\/claude\.ai\/new\?q=Please%20build/);
+    await D.ctx.close();
+  }
+  ok('version B: Claude is asked, in a new chat, to build the calculator there');
+
+  await A.p.click('[data-chat="chatgpt"]');
+  assert.equal(await A.p.isVisible('#ai-build'), true);
+  assert.equal(await A.p.isHidden('#ai-claude'), true);
+  assert.match(await txt(A.p, '#ai-plan'), /ChatGPT can’t work inside this calculator/);
   await A.p.fill('#ai-tk', 'nvda');
-  let q = await handOff(A, () => A.p.click('#ai-build-btn'));
-  assert.match(q, /^Build a DCF valuation for NVDA that I can type into my DCF calculator/);
-  assert.match(q, /HOW THIS PAGE VALUES A STOCK/);
-  assert.match(await txt(A.p, '#ai-status-t'), /Opened a new Claude chat/);
-  assert.match(await A.p.getAttribute('#ai-desktop', 'href'), /^claude:\/\/claude\.ai\/new\?q=Build%20a%20DCF/);
-  q = await handOff(A, () => A.p.click('#ai-review'));
-  assert.match(q, /^Review my DCF valuation of EXMP/);
-  assert.match(q, /"fcf":2000/);
+  let h = await handOff(A, () => A.p.click('#ai-build-btn'));
+  assert.equal(h.href, 'https://chatgpt.com/');
+  assert.match(h.q, /^Build a DCF valuation for NVDA that I can type into my DCF calculator/);
+  assert.match(h.q, /HOW THIS PAGE VALUES A STOCK/);
+  assert.match(await txt(A.p, '#ai-status-t'), /Opened ChatGPT with your request/);
+  assert.equal(await A.p.isHidden('#ai-desktop'), true);
+  h = await handOff(A, () => A.p.click('#ai-review'));
+  assert.match(h.q, /^Review my DCF valuation of EXMP/);
+  assert.match(h.q, /"fcf":2000/);
+  await A.p.click('[data-chat="gemini"]');
   await A.p.fill('#ai-q', 'Is 10% right here?');
-  q = await handOff(A, () => A.p.press('#ai-q', 'Enter'));
-  assert.match(q, /^Is 10% right here\?/);
+  h = await handOff(A, () => A.p.press('#ai-q', 'Enter'));
+  assert.equal(h.href, 'https://gemini.google.com/app');
+  assert.equal(h.q, null, 'Gemini gets the request by pasting');
+  assert.match(await txt(A.p, '#ai-status-t'), /Opened Gemini\. Your request is copied: paste it/);
+  assert.equal(await A.p.evaluate(() => localStorage.getItem('dcf-ai-chat-v1')), '"gemini"');
+  await A.p.click('[data-chat="claude"]');
+  ok('ChatGPT and Gemini get each request in their own chat');
   await A.p.click('[data-route="key"]');
   assert.equal(await A.p.isVisible('#ai-connect'), true);
   assert.equal(await A.p.isDisabled('#ai-build-btn'), true);
@@ -112,7 +147,7 @@ const ok = (name) => { passed++; console.log('  ✓', name); };
     await C.ctx.close();
   }
   await A.p.click('[data-route="plan"]');
-  ok('“Your Claude plan” is the default: requests open a Claude chat, no API key needed');
+  ok('“Your AI plan” is the default; API key is still there and remembered');
 
   await A.p.click('#btn-sync');
   assert.equal(await A.p.isVisible('#sy-modal'), true);
@@ -197,7 +232,7 @@ const ok = (name) => { passed++; console.log('  ✓', name); };
   assert.ok(o.saved.id);
   await syncNow(A.p);
   assert.match(await txt(A.p, '#cl-status'), /Claude connected on .*me@example\.com/);
-  assert.match(await txt(A.p, '#ai-plan'), /saved straight into it/);
+  assert.match(await txt(A.p, '#ai-claude-note'), /also connected this calculator to Claude/);
   assert.equal(await A.p.isVisible('#cl-disconnect'), true);
   await A.p.click('#sy-close');
   assert.equal(await A.p.isHidden('#sy-modal'), true);
@@ -209,17 +244,6 @@ const ok = (name) => { passed++; console.log('  ✓', name); };
   assert.match(await txt(A.p, '.stock[data-ticker="VST"]'), /Saved by Claude.*figures from Q3 2026.*Q3 2026 results release/);
   ok('Claude’s save appears in the calculator with a toast; Open loads it with the same numbers');
 
-  // ---- with the connector, the plan route asks Claude to save into the calculator ----
-  await A.p.fill('#ai-tk', 'WTC.AX');
-  q = await handOff(A, () => A.p.click('#ai-build-btn'));
-  assert.match(q, /^Use the DCF Calculator connector to build a new DCF model for WTC\.AX/);
-  assert.match(q, /save-valuation/);
-  assert.match(await txt(A.p, '#ai-status-t'), /Opened a new Claude chat for WTC\.AX\. When Claude saves the valuation, it appears here/);
-  q = await handOff(A, () => A.p.click('#ai-draft-all'));
-  assert.match(q, /^Use the DCF Calculator connector to update my DCF valuation of VST/);
-  assert.match(q, /"fcf":4325/);
-  assert.match(await txt(A.p, '#ai-build-hint'), /saves the model here/);
-  ok('with the connector, Build and Update ask Claude to save the valuation into the calculator');
   if (SHOTS) await A.p.screenshot({ path: path.join(SHOTS, 'claude-saved.png') });
 
   // ---- device B: the setup code, then a delete that reaches device A ----
@@ -263,7 +287,7 @@ const ok = (name) => { passed++; console.log('  ✓', name); };
   await A.p.click('#sy-close');
   await A.p.click('[data-lang="zh"]');
   await A.p.click('#btn-sync');
-  assert.equal(await txt(A.p, '[data-route="plan"]'), '你的 Claude 方案');
+  assert.equal(await txt(A.p, '[data-route="plan"]'), '你的 AI 方案');
   assert.equal(await txt(A.p, '#sy-title'), '同步與 Claude');
   assert.match(await txt(A.p, '#cl-h'), /用你的 Claude 帳戶使用 Claude/);
   await A.p.setViewportSize({ width: 390, height: 844 });

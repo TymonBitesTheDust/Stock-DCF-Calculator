@@ -47,8 +47,10 @@ export async function buildConnector() {
 }
 
 // The page as published in claude.ai (no <html> or <head>: the artifact host adds them).
-function assemble(connector) {
+// claudePlan: how "Your AI plan" → Claude reaches the calculator inside claude.ai ("link" or "build").
+function assemble(connector, claudePlan = 'link') {
   let s = read('src/app.html');
+  if (s.includes('/*@CLAUDE_PLAN@*/')) s = s.replace('/*@CLAUDE_PLAN@*/', JSON.stringify(claudePlan));
   const core = readFileSync(CORE_FILE, 'utf8');
   if (!s.includes('/*@DCF_CORE@*/')) throw new Error('src/app.html has no /*@DCF_CORE@*/ marker');
   s = s.replace('/*@DCF_CORE@*/', () => core.trim());
@@ -83,6 +85,9 @@ export async function buildAll() {
   writeFileSync(join(here, 'dist/artifact.html'), artifact);
   writeFileSync(join(here, 'index.html'), html);
   writeFileSync(join(here, `dist/dcf-calculator-v${version}.html`), html);
+  // The two ways "Your AI plan" → Claude can work, side by side to compare.
+  writeFileSync(join(here, `dist/dcf-calculator-v${version}-A-open-in-claude.html`), html);
+  writeFileSync(join(here, `dist/dcf-calculator-v${version}-B-claude-builds-it.html`), wrap(assemble(connector, 'build')).html);
   if (connector.code) writeFileSync(join(here, `dist/dcf-connector-v${connector.version}.js`), connector.code);
   return { version, connectorVersion: connector.version, sizes: { page: html.length, connector: connector.code.length } };
 }

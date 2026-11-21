@@ -419,6 +419,11 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
 .ai-route button[aria-checked="true"] { background: var(--blue); color: var(--on-blue); }
 .ai-plan { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--blue-soft); font-size: 13px; color: var(--ink); }
 .ai-plan .link { margin-left: 4px; }
+.ai-pick { display: grid; gap: 6px; }
+.ai-pick-q { font-weight: 600; font-size: 13px; }
+.ai-claude { display: grid; gap: 10px; }
+.ai-claude .hint { margin: 0; }
+.ai[data-claude] .ai-build, .ai[data-claude] .ai-sub, .ai[data-claude] .ai-actions, .ai[data-claude] .ai-ask { display: none; }
 .ai-status a { color: var(--blue); }
 .e-by { font-size: 11px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
 .e-by .tag-claude { font-weight: 600; color: var(--blue); background: var(--blue-soft); border-radius: 4px; padding: 0 5px; }
@@ -485,6 +490,20 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
         </div>
         <div class="ai-route" id="ai-route" role="radiogroup" data-tal="aiRouteAria" hidden>
           <button type="button" role="radio" data-route="plan" data-t="aiRoutePlan" aria-checked="true">Your Claude plan</button><button type="button" role="radio" data-route="key" data-t="aiRouteKey" aria-checked="false">API key</button>
+        </div>
+        <div class="ai-pick" id="ai-pick" hidden>
+          <p class="ai-pick-q" id="ai-pick-q" data-t="aiPickQ">Which AI do you use?</p>
+          <div class="ai-route" id="ai-pick-r" role="radiogroup" aria-labelledby="ai-pick-q">
+            <button type="button" role="radio" data-chat="claude" aria-checked="true">Claude</button><button type="button" role="radio" data-chat="chatgpt" aria-checked="false">ChatGPT</button><button type="button" role="radio" data-chat="gemini" aria-checked="false">Gemini</button>
+          </div>
+        </div>
+        <div class="ai-plan ai-claude" id="ai-claude" hidden>
+          <p id="ai-claude-t"></p>
+          <div class="ai-btns">
+            <a class="btn primary" id="ai-claude-open" target="_blank" rel="noopener" data-t="aiClaudeOpen" hidden>Open the calculator in Claude</a>
+            <button type="button" class="btn primary" id="ai-claude-build" data-t="aiClaudeBuild" hidden>Ask Claude to build it</button>
+          </div>
+          <p class="hint" id="ai-claude-note"></p>
         </div>
         <p class="ai-plan" id="ai-plan" hidden><span id="ai-plan-t"></span><button type="button" class="link" id="ai-plan-btn" data-open-sync hidden></button></p>
         <p class="hint ai-alt" id="ai-alt" hidden><span id="ai-alt-t"></span> <button type="button" class="link" id="ai-alt-btn" data-open-sync></button></p>
@@ -1010,10 +1029,23 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
     aiAltT: ['Or use your Claude plan instead of an API key: connect the calculator to Claude once, then ask Claude in any chat.', '也可以用你的 Claude 方案代替 API 金鑰：把計算機連接到 Claude 一次，之後在任何對話中直接問 Claude。'],
     aiAltBtn: ['Set up Sync & Claude', '設定同步與 Claude'],
     aiRouteAria: ['How Claude is paid for', 'Claude 的付費方式'],
-    aiRoutePlan: ['Your Claude plan', '你的 Claude 方案'],
+    aiRoutePlan: ['Your AI plan', '你的 AI 方案'],
+    aiPickQ: ['Which AI do you use?', '你用哪個 AI？'],
+    aiHAny: ['Ask AI', '詢問 AI'],
+    aiClaudeOpen: ['Open the calculator in Claude', '在 Claude 開啟計算機'],
+    aiClaudeBuild: ['Ask Claude to build it', '請 Claude 建立'],
+    aiClaudeLinkT: ['Claude can only use your Claude plan inside claude.ai, so this calculator has a copy there, ready to use. Open it, and Ask Claude works inside the calculator itself: type a ticker and Claude fills in the whole model. No API key and no separate bill.', 'Claude 方案只能在 claude.ai 裡使用，所以這個計算機在那裡有一個可以直接用的版本。打開後，「詢問 Claude」就能在計算機內運作：輸入股票代號，Claude 會填好整個模型。不需要 API 金鑰，也不會另外收費。'],
+    aiClaudeLinkNote: ['It opens in claude.ai, so you need to be signed in to Claude. The first time you ask, Claude asks you to allow it. Saves you make there stay in your claude.ai account, separate from this file: press Export CSV here if you want a copy of these.', '它會在 claude.ai 開啟，所以需要登入 Claude。第一次使用時，Claude 會請你允許。在那裡儲存的紀錄會留在你的 claude.ai 帳戶，和這個檔案分開：如想保留這裡的紀錄，請先按「匯出 CSV」。'],
+    aiClaudeBuildT: ['Claude can only use your Claude plan inside claude.ai. Ask Claude to build this calculator there for you: it makes a copy you can keep using, with Ask Claude working inside it. No API key and no separate bill.', 'Claude 方案只能在 claude.ai 裡使用。請 Claude 在那裡為你建立這個計算機：它會做一個你可以一直使用的版本，「詢問 Claude」能在裡面運作。不需要 API 金鑰，也不會另外收費。'],
+    aiClaudeBuildNote: ['A new Claude chat opens with the request. It’s also copied: if the message box is empty, paste it and send. Building it takes Claude a few minutes and uses some of your Claude usage. Claude builds its own version, so it can look and work a little differently from this one.', '會開啟新的 Claude 對話並帶入請求，也已複製：如果訊息框是空的，請貼上再傳送。建立需要幾分鐘，並會用掉一些 Claude 用量。這是 Claude 自己建立的版本，外觀和功能可能和這個略有不同。'],
+    aiClaudeBuildSent: ['Opened a new Claude chat asking Claude to build the calculator. When it’s done, open the artifact Claude made and keep using it there.', '已開啟新的 Claude 對話，請 Claude 建立計算機。完成後，打開 Claude 做好的成品，就可以在那裡繼續使用。'],
+    aiClaudeConnected: ['You’ve also connected this calculator to Claude, so you can ask in any Claude chat and it saves here.', '你也已把這個計算機連接到 Claude，所以在任何 Claude 對話中問，結果都會存到這裡。'],
+    aiOtherNote: [n => n + ' can’t work inside this calculator, so each request opens a ' + n + ' chat with your request and your stock’s numbers. It answers there and lists the figures for you to type in.', n => n + ' 無法在這個計算機內運作，所以每個請求都會開一個 ' + n + ' 對話，帶入你的請求和股票數字。它會在那裡回答，並列出數字讓你輸入。'],
+    aiBuildHintOther: [n => n + ' finds the company and its latest figures and sets up all three cases in its chat, for you to type in. Add .AX for the ASX, .TW for Taiwan, .HK for Hong Kong.', n => n + ' 會在對話中找出公司和最新數字並設定三個情境，讓你輸入。澳洲股票加 .AX，台股加 .TW，港股加 .HK。'],
+    aiChatSent: [n => 'Opened ' + n + ' with your request. It’s also copied: if the message box is empty, paste it and send.', n => '已開啟 ' + n + ' 並帶入你的請求，也已複製：如果訊息框是空的，請貼上再傳送。'],
+    aiChatSentPaste: [n => 'Opened ' + n + '. Your request is copied: paste it into the message box and send.', n => '已開啟 ' + n + '。你的請求已複製：請貼到訊息框再傳送。'],
     aiRouteKey: ['API key', 'API 金鑰'],
-    aiIntroPlan: ['Type a ticker to build a new model, or ask Claude to update, check or explain the stock on screen. Each request opens a new Claude chat and uses your Claude plan, with no separate bill. Claude can look up the latest figures on the web there.',
-      '輸入股票代號建立新模型，或請 Claude 更新、檢查或解釋畫面上的股票。每個請求都會開一個新的 Claude 對話，使用你的 Claude 方案，不會另外收費。Claude 在那裡可以上網查最新數字。'],
+    aiIntroPlan: ['Use the AI plan you already have, with no API key and no separate bill. Pick your AI below.', '使用你已有的 AI 方案，不需要 API 金鑰，也不會另外收費。請在下面選擇你的 AI。'],
     aiPlanOn: ['Claude is connected to this calculator, so the valuations it builds are saved straight into it and appear here within seconds.', 'Claude 已連接到這個計算機，它建立的估值會直接存進來，幾秒內就會出現在這裡。'],
     aiPlanOff: ['Claude will answer in the chat and list the figures for you to type in. To have its valuations saved straight into this calculator, connect the calculator to Claude once.', 'Claude 會在對話中回答，並列出數字讓你輸入。如想讓估值直接存進這個計算機，請把計算機連接到 Claude 一次。'],
     aiPlanSetup: ['Set up Sync & Claude', '設定同步與 Claude'],
@@ -1102,7 +1134,7 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
   const LS_DRAFT_OLD = 'dcf-draft-v1';
   const LS_LANG = 'dcf-lang-v1';
   const MINUS = '−';
-  const APP_VERSION = '1.3.0';
+  const APP_VERSION = '1.4.0';
 
   /* ================= helpers ================= */
   const byId = id => document.getElementById(id);
@@ -1778,7 +1810,7 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
       html = esc(t('loadedNote', fmtDateTime(state.loadedFrom.savedAtMs))) + (state.dirty ? ' · <span class="edited">' + esc(t('editedNote')) + '</span>' : '') + t('period');
     } else if (arr.length) {
       html = esc(t('haveSaved', arr.length, tk)) + ' <button type="button" class="link" data-load-latest="' + esc(tk) + '">' + esc(t('loadLatest', fmtDate(arr[0].savedAtMs))) + '</button>';
-    } else if (tk && (ai.state === 'ready' || planRoute()) && !ai.busy && !isNum(num('fcf'))) {
+    } else if (tk && (ai.state === 'ready' || (planRoute() && ai.chatAi !== 'claude')) && !ai.busy && !isNum(num('fcf'))) {
       html = esc(t('notSaved')) + ' <button type="button" class="link" data-ai-fill>' + esc(t('aiFillThis', tk)) + '</button>';
     } else {
       html = esc(tk ? t('notSaved') : t('noTicker'));
@@ -2371,7 +2403,7 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
   /* ================= Claude assistant ================= */
   // Runs on the viewer's own Claude account through the `sample` capability. Claude can't browse,
   // so everything it proposes is shown as a reviewable list and applied only when the viewer chooses.
-  const ai = { mode: window.claude && typeof window.claude.use === 'function' ? 'claude' : 'key', route: 'plan', handedOff: false, fn: null, tools: false, state: 'pending', offKey: '', statusKey: '', statusArg: null, busy: false, ctl: null, proposal: null, built: null, chat: [], outMode: null, outText: '' };
+  const ai = { mode: window.claude && typeof window.claude.use === 'function' ? 'claude' : 'key', route: 'plan', chatAi: 'claude', handedOff: false, fn: null, tools: false, state: 'pending', offKey: '', statusKey: '', statusArg: null, busy: false, ctl: null, proposal: null, built: null, chat: [], outMode: null, outText: '' };
   const AI_CUR = CURRENCIES.map(c => c[0]);
   const AI_UNIT = { thousands: '1e3', millions: '1e6', billions: '1e9' };
   const AI_SUNIT = { single: '1', thousands: '1e3', millions: '1e6', billions: '1e9' };
@@ -2545,6 +2577,8 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
   async function initAI() {
     if (ai.mode === 'key') {
       ai.route = lsGet(LS_ROUTE) === 'key' ? 'key' : 'plan';
+      const ch = lsGet(LS_CHAT);
+      ai.chatAi = CHAT_AIS[ch] ? ch : 'claude';
       api.key = lsGet(LS_KEY) || '';
       if (api.key) { ai.fn = makeApiSample(); ai.tools = true; ai.state = 'ready'; } else ai.state = 'connect';
       renderAI();
@@ -2570,13 +2604,29 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
     const keyMode = ai.mode === 'key';
     byId('ai-intro').textContent = t(plan ? 'aiIntroPlan' : keyMode ? 'aiIntroKey' : 'aiIntro');
     byId('ai-route').hidden = !keyMode;
+    // The downloaded file can hand work to Claude, ChatGPT or Gemini; inside claude.ai it's Claude.
+    const hk = keyMode ? 'aiHAny' : 'aiH';
+    if (byId('ai-h').dataset.tb !== hk) { byId('ai-h').dataset.tb = hk; byId('ai-h').innerHTML = biKey(hk); }
     document.querySelectorAll('[data-route]').forEach(b => { const on = b.dataset.route === (plan ? 'plan' : 'key'); b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1; });
-    const pc = plan && planConnected();
-    byId('ai-plan').hidden = !plan;
-    byId('ai-plan-t').textContent = plan ? t(pc ? 'aiPlanOn' : 'aiPlanOff') : '';
-    const pb = byId('ai-plan-btn'); pb.hidden = !plan || pc || !(typeof sync !== 'undefined' && sync.avail); pb.textContent = t('aiPlanSetup');
-    byId('ai-build-hint').textContent = t(plan ? (pc ? 'aiBuildHintPlan' : 'aiBuildHintPlanOff') : 'aiBuildHint');
-    byId('ai-desktop').hidden = !(plan && ai.handedOff);
+    const claude = plan && ai.chatAi === 'claude', other = plan && !claude, cname = chatAi().name;
+    byId('ai-pick').hidden = !plan;
+    document.querySelectorAll('[data-chat]').forEach(b => { const on = b.dataset.chat === ai.chatAi; b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1; });
+    if (claude) byId('ai').setAttribute('data-claude', ''); else byId('ai').removeAttribute('data-claude');
+    // Claude: the calculator inside claude.ai is where Claude can run on the viewer's plan.
+    byId('ai-claude').hidden = !claude;
+    if (claude) {
+      const linkV = CLAUDE_PLAN !== 'build';
+      byId('ai-claude-t').textContent = t(linkV ? 'aiClaudeLinkT' : 'aiClaudeBuildT');
+      const open = byId('ai-claude-open'); open.hidden = !linkV; open.href = CLAUDE_APP_URL;
+      byId('ai-claude-build').hidden = linkV;
+      byId('ai-claude-note').textContent = t(linkV ? 'aiClaudeLinkNote' : 'aiClaudeBuildNote') + (planConnected() ? ' ' + t('aiClaudeConnected') : '');
+    }
+    // ChatGPT and Gemini: each request opens their chat, and they answer there.
+    byId('ai-plan').hidden = !other;
+    byId('ai-plan-t').textContent = other ? t('aiOtherNote', cname) : '';
+    byId('ai-plan-btn').hidden = true;
+    byId('ai-build-hint').textContent = other ? t('aiBuildHintOther', cname) : t('aiBuildHint');
+    byId('ai-desktop').hidden = !(plan && ai.handedOff && ai.chatAi === 'claude');
     byId('ai-connect').hidden = !(keyMode && !plan && ai.state === 'connect');
     byId('ai-conn').hidden = !(keyMode && !plan && ai.state === 'ready');
     if (keyMode) {
@@ -2644,11 +2694,24 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
   // downloaded page. So on "Your Claude plan" each request opens a new Claude chat with the request filled in.
   // With the DCF Calculator connector, Claude saves the valuation and sync brings it back here.
   const LS_ROUTE = 'dcf-ai-route-v1';
+  const LS_CHAT = 'dcf-ai-chat-v1';
+  // Two ways to reach the calculator inside claude.ai, built as two versions to compare:
+  // "link" opens the owner's shared copy; "build" asks Claude, in a chat, to build its own copy.
+  const CLAUDE_PLAN = [/*@CLAUDE_PLAN@*/][0] || 'link';
+  const CLAUDE_APP_URL = 'https://claude.ai/artifact/3gnMsv2YenEQw9hJy7bZpZ';
+  // Where each AI's chat opens. Gemini has no supported way to fill in its message box from a link.
+  const CHAT_AIS = {
+    claude: { name: 'Claude', url: q => 'https://claude.ai/new?q=' + encodeURIComponent(q), fills: true },
+    chatgpt: { name: 'ChatGPT', url: q => 'https://chatgpt.com/?q=' + encodeURIComponent(q), fills: true },
+    gemini: { name: 'Gemini', url: () => 'https://gemini.google.com/app', fills: false },
+  };
+  const chatAi = () => CHAT_AIS[ai.chatAi] || CHAT_AIS.claude;
+  const claudePicked = () => planRoute() && ai.chatAi === 'claude';
   const planRoute = () => ai.mode === 'key' && ai.route === 'plan';
   const planConnected = () => !!(typeof syncOn === 'function' && syncOn() && sync.conn && sync.conn.authAt);
   function aiPlanPrompt(kind, arg) {
     const tk = normTicker(kind === 'build' ? arg : state.values.ticker) || 'this stock';
-    const conn = planConnected();
+    const conn = ai.chatAi === 'claude' && planConnected();
     const ctx = kind === 'build' ? '' : JSON.stringify(aiContext());
     const lang = aiLangLine();
     const saveLine = 'then save it with save-valuation, with asOf set to the period of the figures and a short note on your sources and the three cases. Finish with the fair value, margin of safety and signal in a few lines.';
@@ -2676,13 +2739,40 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
     const prompt = aiPlanPrompt(kind, arg);
     // Copy first, while the click still counts as the viewer's own action; then open the chat.
     try { if (navigator.clipboard) navigator.clipboard.writeText(prompt).catch(() => {}); } catch (e) { /* the link still carries it */ }
-    window.open('https://claude.ai/new?q=' + encodeURIComponent(prompt), '_blank', 'noopener');
-    const d = byId('ai-desktop');
-    d.href = 'claude://claude.ai/new?q=' + encodeURIComponent(prompt);
+    const c = chatAi();
+    window.open(c.url(prompt), '_blank', 'noopener');
+    byId('ai-desktop').href = 'claude://claude.ai/new?q=' + encodeURIComponent(prompt);
     ai.handedOff = true;
-    const saves = planConnected() && (kind === 'build' || kind === 'all' || kind === 'assume');
-    ai.statusKey = saves ? 'aiPlanSentSave' : 'aiPlanSent';
-    ai.statusArg = saves ? normTicker(kind === 'build' ? arg : state.values.ticker) : null;
+    ai.statusKey = c.fills ? 'aiChatSent' : 'aiChatSentPaste';
+    ai.statusArg = c.name;
+    renderAI();
+  }
+  // Variant B: Claude builds its own copy of the calculator as an artifact, from this description.
+  function claudeBuildPrompt() {
+    return [
+      'Please build me a DCF stock valuation calculator as an artifact, so I can use it right here with my Claude plan: Claude inside the artifact should do the research, so I don\'t need an API key.',
+      'It should work like the open-source DCF Calculator at https://github.com/TymonBitesTheDust/Stock-DCF-Calculator, which is based on Nick 美股咖啡館\'s DCF valuation spreadsheet. If you can read https://raw.githubusercontent.com/TymonBitesTheDust/Stock-DCF-Calculator/main/src/dcf-core.js, use its maths exactly.',
+      '', AI_GUIDE, '',
+      'INPUTS: ticker and company; share price currency ($, A$, NT$, HK$, ¥, €, £) and the report currency with an exchange rate when they differ; amount unit (thousands, millions, billions) and shares unit; base year; method (fcf or margin); the figures above; the discount rate r (8 to 12% is common); buy at 25% and sell at -10% by default; and the bear, base and bull cases (weights 25/50/25). Accept numbers typed like 1,250, 1.2B, (120) or 25億, and percentages as plain numbers.',
+      'RESULTS: the fair value per share (weighted across the filled-in cases, and for each case), the market price, the margin of safety and BUY, HOLD or SELL; the range; the growth today\'s price implies (a reverse DCF on the base case\'s years 1-5 growth, or its target margin in the margin method); dividend checks (yield, dividends against free cash flow, a dividend-discount value); the bridge from enterprise value to fair value; the base case\'s 10-year projection table; and a sensitivity table of fair value for the discount rate -2 to +2 points against terminal growth -1 to +1 point. Warn about likely mistakes: a percentage typed as a fraction, mismatched units (fair value far from the price), terminal growth above 4%, a discount rate at or below terminal growth.',
+      'CLAUDE INSIDE THE CALCULATOR: a "Build model" box where I type a ticker (NVDA, WTC.AX, 2330.TW) and Claude, called from inside the artifact, fills in every input and all three cases with short notes and what to double-check; mark what Claude filled in and let me undo it. Also "Suggest assumptions" for the figures on screen, "Review my inputs" and a box to ask questions about the model on screen.',
+      'SAVING: "Save snapshot" keeps a dated copy per ticker in the artifact\'s storage, with a list of saved stocks, each stock\'s saves with Load and Delete, a small chart of fair value against price over time, and Export CSV.',
+      'LOOK: clean and easy to read, typed inputs in blue and calculated numbers in black like a financial model, light and dark mode, and it must work on a phone. An EN / 繁中 switch for English and Traditional Chinese. Show "For learning and planning. Not financial advice."',
+      'Build the whole thing in one go, working, with a fictional example company filled in so I can see how it works.',
+    ].join('\n');
+  }
+  function claudeBuildHandOff() {
+    const prompt = claudeBuildPrompt();
+    try { if (navigator.clipboard) navigator.clipboard.writeText(prompt).catch(() => {}); } catch (e) { /* the link still carries it */ }
+    window.open(CHAT_AIS.claude.url(prompt), '_blank', 'noopener');
+    byId('ai-desktop').href = 'claude://claude.ai/new?q=' + encodeURIComponent(prompt);
+    ai.handedOff = true; ai.statusKey = 'aiClaudeBuildSent'; ai.statusArg = null;
+    renderAI();
+  }
+  function setChatAi(c) {
+    ai.chatAi = CHAT_AIS[c] ? c : 'claude';
+    lsSet(LS_CHAT, ai.chatAi);
+    ai.statusKey = ''; ai.handedOff = false;
     renderAI();
   }
   function setRoute(r) {
@@ -3013,6 +3103,14 @@ a.btn.is-off { opacity: .5; cursor: not-allowed; }
     byId('ai-connect').addEventListener('submit', e => { e.preventDefault(); aiConnect(byId('ai-key').value); });
     byId('ai-disconnect').addEventListener('click', aiDisconnect);
     byId('ai-route').addEventListener('click', e => { const b = e.target.closest('[data-route]'); if (b) setRoute(b.dataset.route); });
+    byId('ai-pick-r').addEventListener('click', e => { const b = e.target.closest('[data-chat]'); if (b) setChatAi(b.dataset.chat); });
+    byId('ai-pick-r').addEventListener('keydown', e => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const order = ['claude', 'chatgpt', 'gemini'], i = order.indexOf(ai.chatAi);
+      setChatAi(order[(i + (e.key === 'ArrowRight' ? 1 : 2)) % 3]); refocus('[data-chat="' + ai.chatAi + '"]');
+    });
+    byId('ai-claude-build').addEventListener('click', claudeBuildHandOff);
     byId('ai-route').addEventListener('keydown', e => {
       if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
       e.preventDefault(); setRoute(ai.route === 'plan' ? 'key' : 'plan'); refocus('[data-route="' + ai.route + '"]');
